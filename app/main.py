@@ -63,6 +63,27 @@ def _money(value):
     return float(value) if value is not None else None
 
 
+def _dedupe_quotes(events) -> list[dict]:
+    """Uma linha por fornecedor: a cotação mais recente (events já vêm desc por data)."""
+    seen: dict[str, dict] = {}
+    for event in events:
+        if event.event_type != "SUPPLIER_QUOTE":
+            continue
+        name = event.payload.get("supplierName") or "—"
+        if name in seen:
+            continue  # mantém a mais recente
+        seen[name] = {
+            "supplierName": name,
+            "grandTotal": event.payload.get("grandTotal"),
+            "freight": event.payload.get("freight"),
+            "deliveryDays": event.payload.get("deliveryDays"),
+            "paymentTerms": event.payload.get("paymentTerms"),
+            "items": event.payload.get("items", []),
+            "receivedAt": event.created_at.isoformat(),
+        }
+    return list(seen.values())
+
+
 def request_to_dict(request: PurchaseRequest, session: Session) -> dict:
     site = session.get(ConstructionSite, request.construction_site_id)
     user = session.get(User, request.requested_by)
@@ -139,15 +160,7 @@ def request_to_dict(request: PurchaseRequest, session: Session) -> dict:
             "detail": event.detail,
             "createdAt": event.created_at.isoformat(),
         } for event in events],
-        "quotes": [{
-            "supplierName": event.payload.get("supplierName"),
-            "grandTotal": event.payload.get("grandTotal"),
-            "freight": event.payload.get("freight"),
-            "deliveryDays": event.payload.get("deliveryDays"),
-            "paymentTerms": event.payload.get("paymentTerms"),
-            "items": event.payload.get("items", []),
-            "receivedAt": event.created_at.isoformat(),
-        } for event in events if event.event_type == "SUPPLIER_QUOTE"],
+        "quotes": _dedupe_quotes(events),
         "discoveredSuppliers": [{
             "id": discovery.id,
             "name": discovery.supplier_name,
@@ -574,22 +587,25 @@ def _register_supplier_reply(phone: str, text: str, push_name: str | None) -> No
         from app.services.quote_extraction import extract_quote
 
         quote = extract_quote(text, item_descs)
-        with SessionLocal.begin() as session:
-            session.add(AgentEvent(
-                purchase_request_id=request_id,
-                event_type="SUPPLIER_QUOTE",
-                title=f"Cotação de {supplier_name}",
-                detail=(f"Total R$ {quote.grand_total:.2f}" if quote.grand_total else "Cotação recebida")
-                + (f" · entrega em {quote.delivery_days} dias" if quote.delivery_days else ""),
-                payload={
-                    "supplierName": supplier_name,
-                    "grandTotal": quote.grand_total,
-                    "freight": quote.freight,
-                    "deliveryDays": quote.delivery_days,
-                    "paymentTerms": quote.payment_terms,
-                    "items": [i.model_dump() for i in quote.items],
-                },
-            ))
+        # só vira cotação estruturada se tiver preço/itens — conversa solta fica só como SUPPLIER_REPLY
+        has_price = quote.grand_total is not None or any(i.total_price or i.unit_price for i in quote.items)
+        if has_price:
+            with SessionLocal.begin() as session:
+                session.add(AgentEvent(
+                    purchase_request_id=request_id,
+                    event_type="SUPPLIER_QUOTE",
+                    title=f"Cotação de {supplier_name}",
+                    detail=(f"Total R$ {quote.grand_total:.2f}" if quote.grand_total else "Preço por item recebido")
+                    + (f" · entrega em {quote.delivery_days} dias" if quote.delivery_days else ""),
+                    payload={
+                        "supplierName": supplier_name,
+                        "grandTotal": quote.grand_total,
+                        "freight": quote.freight,
+                        "deliveryDays": quote.delivery_days,
+                        "paymentTerms": quote.payment_terms,
+                        "items": [i.model_dump() for i in quote.items],
+                    },
+                ))
 
 
 class CloseQuote(BaseModel):
@@ -598,8 +614,14 @@ class CloseQuote(BaseModel):
 
 
 @app.post("/api/purchase-requests/{request_id}/close")
-def close_quote(request_id: str, body: CloseQuote, session: Session = Depends(get_db)) -> dict:
-    """Fecha o pedido no fornecedor escolhido, com markup aplicado (aprovação do comprador)."""
+def close_quote(
+    request_id: str,
+    body: CloseQuote,
+    session: Session = Depends(get_db),
+    token: str = "",
+    x_wa_token: str = Header(default=""),
+) -> dict:
+    """Fecha o pedido no fornecedor escolhido (markup aplicado) e avisa todos por WhatsApp."""
     request = session.get(PurchaseRequest, request_id)
     if request is None:
         raise HTTPException(404, "Cotação não encontrada")
@@ -623,7 +645,62 @@ def close_quote(request_id: str, body: CloseQuote, session: Session = Depends(ge
         payload={"supplierName": body.supplier_name, "cost": base, "markupPercent": body.markup_percent, "finalPrice": final_price},
     ))
     session.commit()
-    return {"ok": True, "supplierName": body.supplier_name, "cost": base, "finalPrice": final_price}
+
+    # Avisa os fornecedores por WhatsApp: vencedor confirma, os demais recebem retorno.
+    notified = []
+    if settings.wa_configured and hmac.compare_digest(token or x_wa_token, settings.wa_shared_token.get_secret_value()):
+        from app.wa import send_text
+
+        rows = session.execute(
+            select(Supplier)
+            .join(SupplierSelection, SupplierSelection.supplier_id == Supplier.id)
+            .where(SupplierSelection.purchase_request_id == request_id, SupplierSelection.selected.is_(True))
+        ).scalars().all()
+        for supplier in rows:
+            if not supplier.phone:
+                continue
+            if supplier.trade_name == body.supplier_name:
+                msg = (f"✅ Fechamos o pedido da cotação *{request.code}* com vocês! "
+                       f"Nossa equipe entra em contato para confirmar entrega e pagamento. Obrigado!")
+            else:
+                msg = (f"Olá! Sobre a cotação *{request.code}*: desta vez seguimos com outro fornecedor. "
+                       f"Agradecemos muito a proposta e contamos com vocês nas próximas. 🙏")
+            if send_text(supplier.phone, msg):
+                notified.append(supplier.trade_name)
+        if notified:
+            with SessionLocal.begin() as s2:
+                s2.add(AgentEvent(
+                    purchase_request_id=request_id,
+                    event_type="SUPPLIERS_NOTIFIED",
+                    title="Fornecedores avisados por WhatsApp",
+                    detail=f"Vencedor: {body.supplier_name} · Avisados: {', '.join(notified)}",
+                    payload={"winner": body.supplier_name, "notified": notified},
+                ))
+
+    return {"ok": True, "supplierName": body.supplier_name, "cost": base, "finalPrice": final_price, "notified": notified}
+
+
+@app.post("/api/demo/reset")
+def reset_demo(session: Session = Depends(get_db)) -> dict:
+    """Limpa cotações, respostas e descobertas — mantém empresa, obra e fornecedores."""
+    session.query(AgentEvent).delete()
+    session.query(SupplierDiscovery).delete()
+    session.query(SupplierSelection).delete()
+    session.query(Clarification).delete()
+    session.query(PurchaseRequestItem).delete()
+    session.query(PurchaseRequest).delete()
+    session.commit()
+    return {"ok": True, "message": "Cotações e dados operacionais limpos."}
+
+
+@app.post("/api/demo/reset-all")
+def reset_all(session: Session = Depends(get_db)) -> dict:
+    """Limpa TUDO, inclusive fornecedores/empresas/obras. Recomeça do zero."""
+    for model in (AgentEvent, SupplierDiscovery, SupplierSelection, Clarification,
+                  PurchaseRequestItem, PurchaseRequest, Supplier, ConstructionSite, User, Company):
+        session.query(model).delete()
+    session.commit()
+    return {"ok": True, "message": "Todos os dados do sistema foram apagados."}
 
 
 @app.post("/api/purchase-requests/{request_id}/clarifications")
