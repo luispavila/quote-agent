@@ -28,3 +28,32 @@ services:
         value: https://api.featherless.ai/v1
       - key: FEATHERLESS_MODEL
         value: Qwen/Qwen2.5-72B-Instruct
+      - key: WA_SERVICE_URL
+        value: https://quote-agent-wa.onrender.com
+      - key: WA_SHARED_TOKEN
+        fromService:
+          type: web
+          name: quote-agent-wa
+          envVarKey: WA_SHARED_TOKEN
+
+  # WhatsApp (Baileys, instância única). Auth state no disco persistente:
+  # pareamento sobrevive a deploys/restarts.
+  - type: web
+    name: quote-agent-wa
+    runtime: docker
+    region: virginia
+    plan: starter
+    rootDir: wa-service
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    disk:
+      name: wa-auth
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: WA_SHARED_TOKEN
+        generateValue: true
+      - key: WEBHOOK_URL
+        value: https://quote-agent.onrender.com/webhooks/wa
+      - key: AUTH_DIR
+        value: /data/auth

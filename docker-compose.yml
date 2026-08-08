@@ -26,8 +26,24 @@ services:
         required: false
     environment:
       APP_ENV: ${APP_ENV:-dev}
+      WA_SERVICE_URL: http://wa-service:3001
+      WA_SHARED_TOKEN: ${WA_SHARED_TOKEN:-dev-token-0123456789}
     expose:
       - "8000"
+
+  wa-service:
+    image: ${WA_IMAGE:-quote-agent-wa:local}
+    build: ./wa-service
+    restart: unless-stopped
+    environment:
+      PORT: "3001"
+      WA_SHARED_TOKEN: ${WA_SHARED_TOKEN:-dev-token-0123456789}
+      WEBHOOK_URL: http://api:8000/webhooks/wa
+      AUTH_DIR: /data/auth
+    volumes:
+      - wa_auth:/data
+    ports:
+      - "53001:3001"  # curl -X POST localhost:53001/pairing/qr -H "x-wa-token: ..."
 
   postgres:
     image: postgres:16-alpine
@@ -50,3 +66,4 @@ volumes:
   caddy_data:
   caddy_config:
   pg_data:
+  wa_auth:

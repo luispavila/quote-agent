@@ -71,10 +71,34 @@ Ver [.env.example](.env.example). Segredos nunca vão para o git; em produção 
 - [ ] `curl https://<app>.onrender.com/health` verde no telão. 😄
 - [ ] Commits da lógica de negócio começam no repositório do evento a partir da manhã.
 
-## Roadmap (pós-Marco 0)
+## WhatsApp (wa-service)
 
-1. **wa-service** — serviço WhatsApp próprio (Baileys, TypeScript estrito, instância única).
+Serviço próprio em `wa-service/` (Node 22 + TS estrito + Baileys rc11, **instância única**),
+inspirado no funniie-baileys mas ~10x menor. Auth state persiste em disco (`/data`);
+no Render, num Persistent Disk — o pareamento sobrevive a deploys.
+
+Fluxo: mensagem chega no WhatsApp → Baileys → `POST /webhooks/wa` na api (token `X-WA-Token`)
+→ agente LangGraph responde → api chama `POST /messages/text` no wa-service → WhatsApp.
+
+**Parear o número (uma vez):**
+
+```bash
+# abra no browser (mostra o QR; escaneie com WhatsApp > Aparelhos conectados):
+https://<wa-service>.onrender.com/pairing/qr.png?token=<WA_SHARED_TOKEN>
+# ou por código no celular:
+curl -X POST https://<wa-service>.onrender.com/pairing/code -H "x-wa-token: <token>" \
+  -H 'content-type: application/json' -d '{"phone":"5511987654321"}'
+# conferir:
+curl https://<wa-service>.onrender.com/status -H "x-wa-token: <token>"
+```
+
+Local: os mesmos endpoints em `localhost:53001` (token default `dev-token-0123456789`).
+Depois de pareado, mande uma mensagem de outro número para o número pareado — o agente responde.
+
+## Roadmap
+
+1. ~~wa-service (Baileys)~~ ✅
 2. **Agente de cotação** — tools `parse_pedido`/`cotar`/`consolidar`/`aplicar_markup`/…,
    checkpointer Postgres, aprovação via `interrupt()`.
 3. **Dashboard** — tabela comparativa e feed de eventos.
-4. **Integração real** — pareamento do número, webhook público, E2E.
+4. **E2E real** — números de teste dos fornecedores, roteiro da demo.

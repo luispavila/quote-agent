@@ -25,6 +25,9 @@ class Settings(BaseSettings):
         default="Qwen/Qwen2.5-72B-Instruct", validation_alias="FEATHERLESS_MODEL"
     )
 
+    wa_service_url: str | None = Field(default=None, validation_alias="WA_SERVICE_URL")
+    wa_shared_token: SecretStr | None = Field(default=None, validation_alias="WA_SHARED_TOKEN")
+
     langfuse_public_key: str | None = Field(default=None, validation_alias="LANGFUSE_PUBLIC_KEY")
     langfuse_secret_key: SecretStr | None = Field(default=None, validation_alias="LANGFUSE_SECRET_KEY")
     langfuse_host: str = Field(default="https://us.cloud.langfuse.com", validation_alias="LANGFUSE_HOST")
@@ -40,6 +43,10 @@ class Settings(BaseSettings):
     @property
     def langfuse_enabled(self) -> bool:
         return bool(self.langfuse_public_key and self.langfuse_secret_key)
+
+    @property
+    def wa_configured(self) -> bool:
+        return bool(self.wa_service_url and self.wa_shared_token)
 
     @property
     def llm_configured(self) -> bool:
