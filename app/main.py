@@ -6,7 +6,8 @@ from contextlib import asynccontextmanager
 from decimal import Decimal
 from pathlib import Path
 
-from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException
+import httpx
+from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -177,6 +178,57 @@ def wa_webhook(payload: WaWebhook, background: BackgroundTasks, x_wa_token: str 
         _seen_message_ids.append(payload.message_id)
     # O canal está preservado; o disparo de cotações será ligado no próximo marco.
     return {"ok": True}
+
+
+# ---------- Operação do WhatsApp (proxy autenticado para o wa-service) ----------
+
+def _require_wa(token: str) -> None:
+    if not settings.wa_configured:
+        raise HTTPException(503, "wa-service não configurado (WA_SERVICE_URL/WA_SHARED_TOKEN)")
+    if not hmac.compare_digest(token, settings.wa_shared_token.get_secret_value()):
+        raise HTTPException(401, "token inválido")
+
+
+def _wa_request(method: str, path: str, json_body: dict | None = None) -> httpx.Response:
+    try:
+        return httpx.request(
+            method,
+            f"{settings.wa_service_url.rstrip('/')}{path}",
+            json=json_body,
+            headers={"x-wa-token": settings.wa_shared_token.get_secret_value()},
+            timeout=60.0,  # qr pode esperar a conexão do Baileys (+ cold start no free)
+        )
+    except httpx.HTTPError as err:
+        raise HTTPException(502, f"wa-service inacessível: {err}") from err
+
+
+@app.get("/api/wa/status")
+def wa_status(token: str = "", x_wa_token: str = Header(default="")) -> dict:
+    _require_wa(token or x_wa_token)
+    return _wa_request("GET", "/status").json()
+
+
+@app.get("/api/wa/qr.png")
+def wa_qr_png(token: str = "", x_wa_token: str = Header(default="")) -> Response:
+    """Abra no browser: /api/wa/qr.png?token=<WA_SHARED_TOKEN> e escaneie no WhatsApp."""
+    _require_wa(token or x_wa_token)
+    upstream = _wa_request("GET", "/pairing/qr.png")
+    if upstream.status_code != 200:
+        raise HTTPException(upstream.status_code, upstream.text[:200])
+    return Response(content=upstream.content, media_type="image/png", headers={"cache-control": "no-store"})
+
+
+class WaPairingCode(BaseModel):
+    phone: str = Field(min_length=10)
+
+
+@app.post("/api/wa/pairing/code")
+def wa_pairing_code(body: WaPairingCode, token: str = "", x_wa_token: str = Header(default="")) -> dict:
+    _require_wa(token or x_wa_token)
+    upstream = _wa_request("POST", "/pairing/code", {"phone": body.phone})
+    if upstream.status_code != 200:
+        raise HTTPException(upstream.status_code, upstream.text[:200])
+    return upstream.json()
 
 
 @app.get("/api/bootstrap")
