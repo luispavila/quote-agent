@@ -92,3 +92,32 @@ e os mesmos contratos são usados localmente e online.
 | POST | `/api/purchase-requests/{id}/clarifications` | Retoma o LangGraph |
 
 Os contratos e decisões de produto ficam em [`docs/`](docs/README.md).
+
+## WhatsApp (wa-service)
+
+Serviço próprio em `wa-service/` (Node 22 + TS estrito + Baileys rc11, **instância única**),
+inspirado no funniie-baileys mas ~10x menor. Auth state persiste em **Postgres** quando
+`DATABASE_URL` está setada (tabela `wa_auth` criada sozinha — o Postgres free do Render serve
+e o pareamento sobrevive a deploys/hibernação), senão em disco (`AUTH_DIR`).
+
+> **Free tier do Render hiberna** após ~15 min ocioso e mensagem de WhatsApp NÃO acorda o
+> serviço. Configure um ping gratuito (cron-job.org / UptimeRobot) no `/health` dos dois
+> serviços a cada 10 min — ou use plano Starter.
+
+Fluxo: mensagem chega no WhatsApp → Baileys → `POST /webhooks/wa` na api (token `X-WA-Token`);
+a api pode responder chamando `POST /messages/text` no wa-service (o disparo de cotações pelo
+canal entra no próximo marco).
+
+**Parear o número (uma vez):**
+
+```bash
+# abra no browser (mostra o QR; escaneie com WhatsApp > Aparelhos conectados):
+https://<wa-service>.onrender.com/pairing/qr.png?token=<WA_SHARED_TOKEN>
+# ou por código no celular:
+curl -X POST https://<wa-service>.onrender.com/pairing/code -H "x-wa-token: <token>" \
+  -H 'content-type: application/json' -d '{"phone":"5511987654321"}'
+# conferir:
+curl https://<wa-service>.onrender.com/status -H "x-wa-token: <token>"
+```
+
+Local: os mesmos endpoints em `localhost:53001` (token default `dev-token-0123456789`).

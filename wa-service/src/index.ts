@@ -1,11 +1,10 @@
 import { timingSafeEqual } from "node:crypto";
-import { access } from "node:fs/promises";
-import path from "node:path";
 
 import Fastify from "fastify";
 import { z } from "zod";
 
 import { env } from "./env.js";
+import { hasCreds } from "./wa/authState.js";
 import {
   connect,
   getQr,
@@ -110,13 +109,13 @@ app.post("/session/logout", async () => {
 
 async function main() {
   await app.listen({ port: env.PORT, host: "0.0.0.0" });
-  // reconecta sozinho se já houver credenciais salvas no disco
-  try {
-    await access(path.join(env.AUTH_DIR, "creds.json"));
+  // reconecta sozinho se já houver credenciais salvas (Postgres ou disco)
+  if (await hasCreds()) {
     app.log.info("credenciais encontradas — reconectando sessão");
     void connect();
-  } catch {
-    app.log.info(`sem credenciais em ${env.AUTH_DIR} — aguarde pareamento (jid=${jidForHealth() ?? "n/a"})`);
+  } else {
+    const backend = env.DATABASE_URL ? "postgres" : env.AUTH_DIR;
+    app.log.info(`sem credenciais (${backend}) — aguarde pareamento (jid=${jidForHealth() ?? "n/a"})`);
   }
 }
 

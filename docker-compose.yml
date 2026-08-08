@@ -46,9 +46,13 @@ services:
       PORT: "3001"
       WA_SHARED_TOKEN: ${WA_SHARED_TOKEN:-dev-token-0123456789}
       WEBHOOK_URL: http://api:8000/webhooks/wa
+      DATABASE_URL: postgresql://${POSTGRES_USER:-quote}:${POSTGRES_PASSWORD:-quote}@postgres:5432/${POSTGRES_DB:-quote}
       AUTH_DIR: /data/auth
     volumes:
       - wa_auth:/data
+    depends_on:
+      postgres:
+        condition: service_healthy
     ports:
       - "53001:3001"
 

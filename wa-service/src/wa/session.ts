@@ -9,13 +9,10 @@
  * - fetchLatestBaileysVersion cacheada por processo
  */
 
-import { rm } from "node:fs/promises";
-
 import makeWASocket, {
   DisconnectReason,
   fetchLatestBaileysVersion,
   normalizeMessageContent,
-  useMultiFileAuthState,
   type WASocket,
   type proto,
 } from "baileys";
@@ -23,6 +20,7 @@ import pino from "pino";
 import QRCode from "qrcode";
 
 import { env } from "../env.js";
+import { clearAuth, getAuthState } from "./authState.js";
 import { postWebhook } from "../webhook/client.js";
 import {
   brPhoneCandidates,
@@ -96,7 +94,7 @@ export async function connect(): Promise<void> {
   clearReconnectTimer();
   status = "connecting";
 
-  const { state, saveCreds } = await useMultiFileAuthState(env.AUTH_DIR);
+  const { state, saveCreds } = await getAuthState();
   waVersion ??= (await fetchLatestBaileysVersion()).version;
 
   const socket = makeWASocket({
@@ -158,7 +156,7 @@ export async function connect(): Promise<void> {
         if (code === DisconnectReason.loggedOut) {
           logger.warn("sessão deslogada — limpando credenciais");
           status = "disconnected";
-          await rm(env.AUTH_DIR, { recursive: true, force: true });
+          await clearAuth();
           void postWebhook({
             event: "connection.update",
             status: "disconnected",
@@ -203,12 +201,12 @@ export async function connect(): Promise<void> {
 }
 
 export async function requestPairing(phone: string): Promise<void> {
-  const { state } = await useMultiFileAuthState(env.AUTH_DIR);
+  const { state } = await getAuthState();
   if (state.creds.registered) {
     throw Object.assign(new Error("já pareado — faça logout antes"), { statusCode: 409 });
   }
   // pairing por código exige auth state virgem
-  await rm(env.AUTH_DIR, { recursive: true, force: true });
+  await clearAuth();
   pairingPhone = onlyDigits(phone);
   pairingCodeRequested = false;
   pairingCode = undefined;
@@ -245,7 +243,7 @@ export async function logout(): Promise<void> {
     ]);
     current.end(undefined);
   }
-  await rm(env.AUTH_DIR, { recursive: true, force: true });
+  await clearAuth();
   status = "disconnected";
   sock = undefined;
 }
