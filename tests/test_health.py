@@ -16,4 +16,4 @@ def test_chat_without_key_returns_503(monkeypatch):
     client = TestClient(app)
     resp = client.get("/")
     assert resp.status_code == 200
-    assert "Nexo Compras" in resp.text
+    assert "CotaAI" in resp.text

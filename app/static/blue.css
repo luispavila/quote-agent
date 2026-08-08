@@ -10,6 +10,8 @@
   --soft: #eaf1fa;
 }
 
+html, body, button, input, select, textarea { font-family: "Segoe UI", Arial, sans-serif; }
+
 .sidebar { color: #eaf2fc; }
 .brand, .sidebar footer { border-color: #183a65; }
 .brand-mark { background: #f5f9ff; }
@@ -26,3 +28,38 @@
 .field input, .field select, .field textarea,
 .material-row input, .material-row select, .search { background: #f8fbff; }
 .toast { background: #0b2345; }
+.sidebar footer button { border: 0; background: transparent; color: #8fb9e8; padding: 8px 0 0; text-align: left; cursor: pointer; font: inherit; }
+.label-action { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.form-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
+.quote-row { cursor: pointer; transition: border-color .15s, transform .15s; }
+.quote-row:hover { border-color: #86b5e7; transform: translateY(-1px); }
+.detail-metrics .metric { min-height: 116px; }
+.detail-status { font-size: 19px !important; line-height: 1.25; }
+.detail-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.detail-item { display: flex; justify-content: space-between; gap: 20px; padding: 15px 0; border-bottom: 1px solid var(--line); }
+.detail-item span { color: var(--muted); white-space: nowrap; }
+.message-list article { padding: 0 0 18px 16px; margin-left: 4px; border-left: 2px solid #b7d4f2; }
+.message-list article p { color: var(--muted); margin: 6px 0; }
+.message-list article small { color: #7b8da2; }
+@media (max-width: 800px) { .detail-columns { grid-template-columns: 1fr; } }
+.success-overlay { position: fixed; inset: 0; z-index: 200; display: grid; place-items: center; padding: 20px; background: rgba(5, 23, 48, .64); backdrop-filter: blur(5px); animation: overlay-in .18s ease-out; }
+.success-modal { width: min(480px, 100%); padding: 38px; background: #fff; border-radius: 14px; box-shadow: 0 28px 80px rgba(4, 24, 52, .3); text-align: center; animation: modal-in .24s ease-out; }
+.success-label { color: #2878d0; font-size: 11px; font-weight: 800; letter-spacing: .09em; }
+.success-modal h2 { margin: 13px 0 9px; font-size: 25px; }
+.success-modal p { color: var(--muted); line-height: 1.6; }
+.success-actions { display: grid; grid-template-columns: 1fr 1.35fr; gap: 10px; margin-top: 27px; }
+@keyframes overlay-in { from { opacity: 0; } }
+@keyframes modal-in { from { opacity: 0; transform: translateY(12px) scale(.98); } }
+@media (max-width: 520px) { .success-modal { padding: 29px 22px; } .success-actions { grid-template-columns: 1fr; } }
+#preferred-suppliers { width: 100%; min-height: 145px; border: 1px solid var(--line); border-radius: 7px; padding: 8px; background: #f8fbff; margin: 12px 0 7px; }
+#preferred-suppliers option { padding: 9px; border-radius: 5px; }
+#preferred-suppliers option:checked { background: #dcecff linear-gradient(#dcecff,#dcecff); color: #123d73; }
+.material-row { grid-template-columns: minmax(220px,1fr) 90px 90px 150px 145px 30px; }
+.discovery-panel { margin-top: 20px; }
+.discovery-head { display: flex; justify-content: space-between; gap: 20px; align-items: start; }
+.discovery-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 13px; margin-top: 20px; }
+.discovery-card { border: 1px solid var(--line); border-radius: 9px; padding: 17px; background: #f8fbff; }
+.discovery-card small { color: #2878d0; font-weight: 700; }.discovery-card h3 { margin: 9px 0; }.discovery-card p { color: var(--muted); font-size: 12px; line-height: 1.55; }.discovery-card a { color: #1768b5; font-weight: 700; text-decoration: none; }
+.agent-running { margin-top: 18px; padding: 13px; border-radius: 7px; background: #eaf3fd; color: #155b9e; }.agent-running span { display: inline-block; width: 8px; height: 8px; margin-right: 8px; border-radius: 50%; background: #2878d0; animation: agent-pulse 1s infinite alternate; }
+@keyframes agent-pulse { to { opacity: .3; transform: scale(.75); } }
+@media(max-width:1050px){.material-row{grid-template-columns:1fr 80px 85px 150px}.material-row select:nth-of-type(3),.material-row .remove{display:none}.discovery-grid{grid-template-columns:1fr 1fr}}@media(max-width:650px){.discovery-grid{grid-template-columns:1fr}.discovery-head{display:block}.discovery-head .btn{margin-top:10px}}

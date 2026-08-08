@@ -157,3 +157,18 @@ class AgentEvent(Base):
     detail: Mapped[str | None] = mapped_column(Text)
     payload: Mapped[dict] = mapped_column(JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class SupplierDiscovery(Base):
+    __tablename__ = "supplier_discoveries"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    purchase_request_id: Mapped[str] = mapped_column(ForeignKey("purchase_requests.id"))
+    supplier_name: Mapped[str] = mapped_column(String(200))
+    website: Mapped[str] = mapped_column(String(500))
+    source_url: Mapped[str] = mapped_column(String(500))
+    category: Mapped[str | None] = mapped_column(String(120))
+    city: Mapped[str | None] = mapped_column(String(120))
+    confidence: Mapped[Decimal | None] = mapped_column(Numeric(4, 3))
+    rationale: Mapped[str | None] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(30), default="SUGGESTED")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

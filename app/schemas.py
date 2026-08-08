@@ -10,6 +10,7 @@ class ItemCreate(BaseModel):
     raw_description: str = Field(alias="rawDescription", min_length=3, max_length=1000)
     quantity: Decimal = Field(gt=0)
     unit: str = Field(min_length=1, max_length=30)
+    category: str | None = Field(default=None, max_length=100)
 
     model_config = {"populate_by_name": True}
 
@@ -25,6 +26,31 @@ class PurchaseRequestCreate(BaseModel):
     commercial_constraints: dict = Field(default_factory=dict, alias="commercialConstraints")
     notes: str | None = None
     items: list[ItemCreate] = Field(min_length=1, max_length=100)
+    preferred_supplier_ids: list[str] = Field(default_factory=list, alias="preferredSupplierIds")
+
+    model_config = {"populate_by_name": True}
+
+
+class ConstructionSiteCreate(BaseModel):
+    company_id: str = Field(alias="companyId")
+    name: str = Field(min_length=2, max_length=180)
+    code: str = Field(min_length=2, max_length=60)
+    cost_center: str | None = Field(default=None, alias="costCenter", max_length=80)
+    street: str = Field(min_length=2, max_length=200)
+    number: str = Field(min_length=1, max_length=30)
+    city: str = Field(min_length=2, max_length=100)
+    state: str = Field(min_length=2, max_length=2)
+    postal_code: str = Field(alias="postalCode", min_length=8, max_length=10)
+
+    model_config = {"populate_by_name": True}
+
+
+class SupplierCreate(BaseModel):
+    name: str = Field(min_length=2, max_length=180)
+    tax_id: str | None = Field(default=None, alias="taxId", max_length=20)
+    phone: str = Field(min_length=8, max_length=30)
+    city: str = Field(min_length=2, max_length=100)
+    categories: list[str] = Field(min_length=1)
 
     model_config = {"populate_by_name": True}
 

@@ -3,33 +3,35 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Nexo Compras</title>
+  <title>CotaAI — Compras para construção civil</title>
+  <link rel="icon" href="/static/assets/cotaai-logo.png">
   <link rel="stylesheet" href="/static/styles.css">
   <link rel="stylesheet" href="/static/blue.css">
+  <link rel="stylesheet" href="/static/public.css">
+  <link rel="stylesheet" href="/static/logo.css">
 </head>
 <body>
-  <div class="shell">
+  <div id="public-root"></div>
+  <div id="product-shell" class="shell hidden">
     <aside class="sidebar">
-      <div class="brand"><span class="brand-mark">N</span><strong>nexo</strong></div>
-      <div class="connection"><i></i> Canal de cotação ativo</div>
-      <div class="trial"><small>AMBIENTE DE DEMONSTRAÇÃO</small><strong>Operação ativa</strong><span>Procurement para construção civil</span></div>
+      <div class="brand"><img src="/static/assets/cotaai-logo.png" alt="CotaAI"></div>
       <nav>
         <small>PRINCIPAL</small>
-        <button data-page="dashboard"><span>▦</span> Dashboard</button>
-        <button data-page="new"><span>＋</span> Nova cotação</button>
-        <button data-page="quotes"><span>▤</span> Cotações</button>
-        <button data-page="budgets"><span>▧</span> Orçamentos</button>
+        <button data-page="dashboard">Dashboard</button>
+        <button data-page="new">Nova cotação</button>
+        <button data-page="quotes">Cotações</button>
+        <button data-page="budgets">Orçamentos</button>
         <small>CADASTROS</small>
-        <button data-page="suppliers"><span>▥</span> Fornecedores</button>
-        <button data-page="ranking"><span>▥</span> Ranking</button>
-        <button data-page="works"><span>♙</span> Obras</button>
-        <button data-page="materials"><span>▱</span> Materiais</button>
+        <button data-page="suppliers">Fornecedores</button>
+        <button data-page="ranking">Ranking</button>
+        <button data-page="works">Obras</button>
+        <button data-page="materials">Materiais</button>
         <small>SISTEMA</small>
-        <button data-page="whatsapp"><span>◯</span> WhatsApp</button>
-        <button data-page="plans"><span>▭</span> Assinatura</button>
-        <button data-page="settings"><span>⚙</span> Configurações</button>
+        <button data-page="whatsapp">WhatsApp</button>
+        <button data-page="plans">Assinatura</button>
+        <button data-page="settings">Configurações</button>
       </nav>
-      <footer><strong>Construtora Horizonte</strong><span>Marina Costa</span></footer>
+      <footer><strong>Construtora Horizonte</strong><span>Marina Costa</span><button id="logout">Sair da conta</button></footer>
     </aside>
     <main id="app"><div class="loading">Carregando operação...</div></main>
   </div>

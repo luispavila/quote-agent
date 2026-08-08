@@ -26,10 +26,11 @@ from app.models import (
     PurchaseRequestItem,
     RequestStatus,
     Supplier,
+    SupplierDiscovery,
     SupplierSelection,
     User,
 )
-from app.schemas import ClarificationAnswers, PurchaseRequestCreate
+from app.schemas import ClarificationAnswers, ConstructionSiteCreate, PurchaseRequestCreate, SupplierCreate
 from pydantic import BaseModel, Field
 from app.settings import get_settings
 
@@ -79,6 +80,11 @@ def request_to_dict(request: PurchaseRequest, session: Session) -> dict:
         select(AgentEvent)
         .where(AgentEvent.purchase_request_id == request.id)
         .order_by(AgentEvent.created_at.desc())
+    ).all()
+    discoveries = session.scalars(
+        select(SupplierDiscovery)
+        .where(SupplierDiscovery.purchase_request_id == request.id)
+        .order_by(SupplierDiscovery.confidence.desc(), SupplierDiscovery.created_at.desc())
     ).all()
     return {
         "id": request.id,
@@ -132,6 +138,16 @@ def request_to_dict(request: PurchaseRequest, session: Session) -> dict:
             "detail": event.detail,
             "createdAt": event.created_at.isoformat(),
         } for event in events],
+        "discoveredSuppliers": [{
+            "id": discovery.id,
+            "name": discovery.supplier_name,
+            "website": discovery.website,
+            "category": discovery.category,
+            "city": discovery.city,
+            "confidence": float(discovery.confidence) if discovery.confidence is not None else None,
+            "rationale": discovery.rationale,
+            "status": discovery.status,
+        } for discovery in discoveries],
         "createdAt": request.created_at.isoformat(),
     }
 
@@ -257,6 +273,40 @@ def list_suppliers(session: Session = Depends(get_db)) -> list[dict]:
     } for supplier in suppliers]
 
 
+@app.post("/api/suppliers", status_code=201)
+def create_supplier(payload: SupplierCreate, session: Session = Depends(get_db)) -> dict:
+    supplier = Supplier(
+        trade_name=payload.name,
+        tax_id=payload.tax_id or None,
+        phone=payload.phone,
+        service_cities=[payload.city],
+        categories=payload.categories,
+        performance={"completedOrders": 0, "quoteResponseRate": 0, "onTimeDeliveryRate": 0},
+    )
+    session.add(supplier)
+    session.commit()
+    session.refresh(supplier)
+    return {"id": supplier.id, "name": supplier.trade_name, "phone": supplier.phone, "cities": supplier.service_cities, "categories": supplier.categories, "performance": supplier.performance, "status": supplier.status}
+
+
+@app.post("/api/construction-sites", status_code=201)
+def create_construction_site(payload: ConstructionSiteCreate, session: Session = Depends(get_db)) -> dict:
+    if session.get(Company, payload.company_id) is None:
+        raise HTTPException(422, "Empresa inválida")
+    site = ConstructionSite(
+        company_id=payload.company_id,
+        code=payload.code,
+        name=payload.name,
+        cost_center=payload.cost_center,
+        delivery_address={"street": payload.street, "number": payload.number, "city": payload.city, "state": payload.state.upper(), "postalCode": payload.postal_code},
+        receiving_rules={},
+    )
+    session.add(site)
+    session.commit()
+    session.refresh(site)
+    return {"id": site.id, "companyId": site.company_id, "name": site.name, "city": payload.city}
+
+
 @app.post("/api/demo/seed")
 def seed_demo(session: Session = Depends(get_db)) -> dict:
     company = session.scalar(select(Company).where(Company.tax_id == "12345678000190"))
@@ -293,16 +343,31 @@ def dashboard(session: Session = Depends(get_db)) -> dict:
 
 
 @app.post("/api/purchase-requests", status_code=201)
-def create_purchase_request(payload: PurchaseRequestCreate, session: Session = Depends(get_db)) -> dict:
+def create_purchase_request(payload: PurchaseRequestCreate, background: BackgroundTasks, session: Session = Depends(get_db)) -> dict:
     if session.get(Company, payload.company_id) is None or session.get(ConstructionSite, payload.construction_site_id) is None or session.get(User, payload.requested_by) is None:
         raise HTTPException(422, "Empresa, obra ou solicitante inválido")
     code = f"SC-{str(uuid.uuid4())[:6].upper()}"
     request = PurchaseRequest(code=code, company_id=payload.company_id, construction_site_id=payload.construction_site_id, requested_by=payload.requested_by, title=payload.request_title, priority=payload.priority, required_at=payload.required_at, maximum_budget=payload.maximum_budget, constraints=payload.commercial_constraints, notes=payload.notes)
-    request.items = [PurchaseRequestItem(client_item_id=item.client_item_id, raw_description=item.raw_description, quantity=item.quantity, unit=item.unit) for item in payload.items]
+    request.items = [PurchaseRequestItem(client_item_id=item.client_item_id, raw_description=item.raw_description, canonical_category=item.category, category_label=item.category, quantity=item.quantity, unit=item.unit) for item in payload.items]
     session.add(request); session.flush()
+    for rank, supplier_id in enumerate(payload.preferred_supplier_ids, start=1):
+        if session.get(Supplier, supplier_id):
+            session.add(SupplierSelection(purchase_request_id=request.id, supplier_id=supplier_id, selected=True, rank=rank, score=1, risk_level="BUYER_SELECTED", factors={"source": "BUYER_PREFERENCE"}, reasons=["Selecionado diretamente pelo comprador."]))
     session.add(AgentEvent(purchase_request_id=request.id, event_type="REQUEST_CREATED", title="Solicitação criada", detail=f"{len(request.items)} itens recebidos para análise.", payload={"code": code}))
     session.commit(); session.refresh(request)
-    return request_to_dict(request, session)
+    response = request_to_dict(request, session)
+    from app.services.supplier_discovery import run_supplier_discovery
+    background.add_task(run_supplier_discovery, request.id)
+    return response
+
+
+@app.post("/api/purchase-requests/{request_id}/discover-suppliers", status_code=202)
+def rediscover_suppliers(request_id: str, background: BackgroundTasks, session: Session = Depends(get_db)) -> dict:
+    if session.get(PurchaseRequest, request_id) is None:
+        raise HTTPException(404, "Cotação não encontrada")
+    from app.services.supplier_discovery import run_supplier_discovery
+    background.add_task(run_supplier_discovery, request_id)
+    return {"ok": True, "status": "DISCOVERY_QUEUED"}
 
 
 @app.get("/api/purchase-requests")

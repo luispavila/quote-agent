@@ -1,0 +1,49 @@
+.public-brand {
+  display: block;
+  width: 154px;
+  height: 46px;
+  background: url('/static/assets/cotaai-logo.png') center / contain no-repeat;
+  font-size: 0;
+  color: transparent;
+}
+
+.public-brand::after { display: none; }
+
+.auth-aside .public-brand {
+  width: 174px;
+  height: 56px;
+  background-color: #fff;
+  background-size: 158px auto;
+  border-radius: 9px;
+}
+
+.sidebar .brand { padding: 10px 16px; }
+.sidebar .brand img {
+  display: block;
+  width: 154px;
+  max-width: 100%;
+  height: 43px;
+  object-fit: contain;
+  background: #fff;
+  border-radius: 8px;
+  padding: 5px 9px;
+}
+
+@media (max-width: 850px) {
+  .sidebar .brand { padding: 12px 9px; }
+  .sidebar .brand img { width: 56px; height: 40px; padding: 5px; object-fit: cover; object-position: left; }
+}
+
+@media (max-width: 560px) {
+  .public-brand { width: 126px; height: 38px; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .product-preview, .preview-row, .trust-stat, .process-step, .feature, .hero-actions .btn { transition: transform .24s ease, box-shadow .24s ease, border-color .24s ease; }
+  .product-preview:hover { transform: translateY(-7px) rotate(-.35deg); box-shadow: 0 40px 90px rgba(17,56,102,.21); }
+  .preview-row:hover { transform: translateX(6px); background: #f7fbff; }
+  .trust-stat:hover { transform: translateY(-5px); }
+  .process-step:hover { transform: translateX(8px); border-color: #9dc7ee; box-shadow: 0 13px 28px rgba(17,56,102,.08); }
+  .feature:hover { transform: translateY(-7px); }
+  .hero-actions .btn:hover { transform: translateY(-3px); }
+}

@@ -28,6 +28,8 @@ class Settings(BaseSettings):
         default="Qwen/Qwen2.5-7B-Instruct", validation_alias="FEATHERLESS_MODEL"
     )
     featherless_temperature: float = Field(default=0, ge=0, le=2, validation_alias="FEATHERLESS_TEMPERATURE")
+    web_search_url: str = Field(default="https://html.duckduckgo.com/html/", validation_alias="WEB_SEARCH_URL")
+    supplier_discovery_limit: int = Field(default=6, ge=1, le=20, validation_alias="SUPPLIER_DISCOVERY_LIMIT")
 
     wa_service_url: str | None = Field(default=None, validation_alias="WA_SERVICE_URL")
     wa_shared_token: SecretStr | None = Field(default=None, validation_alias="WA_SHARED_TOKEN")
