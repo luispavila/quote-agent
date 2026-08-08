@@ -29,6 +29,7 @@ from app.models import (
     SupplierDiscovery,
     SupplierSelection,
     User,
+    utcnow,
 )
 from app.schemas import ClarificationAnswers, ConstructionSiteCreate, PurchaseRequestCreate, SupplierCreate
 from pydantic import BaseModel, Field
@@ -192,7 +193,9 @@ def wa_webhook(payload: WaWebhook, background: BackgroundTasks, x_wa_token: str 
         if payload.message_id in _seen_message_ids:
             return {"ok": True, "dedup": True}
         _seen_message_ids.append(payload.message_id)
-    # O canal está preservado; o disparo de cotações será ligado no próximo marco.
+        # DM de texto → tenta casar com fornecedor e registrar na cotação (em background)
+        if payload.text and payload.from_phone and not payload.from_me and not payload.is_group:
+            background.add_task(_register_supplier_reply, payload.from_phone, payload.text, None)
     return {"ok": True}
 
 
@@ -242,6 +245,15 @@ class WaPairingCode(BaseModel):
 def wa_pairing_code(body: WaPairingCode, token: str = "", x_wa_token: str = Header(default="")) -> dict:
     _require_wa(token or x_wa_token)
     upstream = _wa_request("POST", "/pairing/code", {"phone": body.phone})
+    if upstream.status_code != 200:
+        raise HTTPException(upstream.status_code, upstream.text[:200])
+    return upstream.json()
+
+
+@app.post("/api/wa/logout")
+def wa_logout(token: str = "", x_wa_token: str = Header(default="")) -> dict:
+    _require_wa(token or x_wa_token)
+    upstream = _wa_request("POST", "/session/logout")
     if upstream.status_code != 200:
         raise HTTPException(upstream.status_code, upstream.text[:200])
     return upstream.json()
@@ -330,6 +342,66 @@ def seed_demo(session: Session = Depends(get_db)) -> dict:
     return {"companyId": company.id, "userId": user.id, "constructionSiteId": site.id, "suppliersCreated": len(suppliers)}
 
 
+@app.post("/api/demo/seed-whatsapp")
+def seed_whatsapp_suppliers(session: Session = Depends(get_db)) -> dict:
+    """Cria/atualiza 2 fornecedores com números reais de teste para a demo por WhatsApp."""
+    seed_demo(session)  # garante empresa/obra/usuário
+    test_suppliers = [
+        ("Fornecedor Teste A", "55555501000155", "+5534998418420", ["Uberlândia", "Campinas"]),
+        ("Fornecedor Teste B", "55555502000155", "+5511998567712", ["São Paulo", "Campinas"]),
+    ]
+    created, updated = [], []
+    for name, tax_id, phone, cities in test_suppliers:
+        supplier = session.scalar(select(Supplier).where(Supplier.tax_id == tax_id))
+        if supplier:
+            supplier.phone = phone
+            updated.append(name)
+        else:
+            session.add(Supplier(
+                trade_name=name, tax_id=tax_id, phone=phone,
+                categories=["CEMENT", "MORTAR", "MASONRY_BLOCK"], service_cities=cities,
+                performance={"completedOrders": 10, "onTimeDeliveryRate": .9, "quoteResponseRate": .9,
+                             "orderAccuracyRate": .95, "responseSpeedScore": .9, "priceCompetitiveness": .85,
+                             "logisticsScore": .9},
+            ))
+            created.append(name)
+    session.commit()
+    return {"ok": True, "created": created, "updated": updated}
+
+
+@app.post("/api/demo/seed-quote", status_code=201)
+def seed_test_quote(session: Session = Depends(get_db)) -> dict:
+    """Cria uma cotação de teste já com fornecedores de WhatsApp preferidos."""
+    seed_whatsapp_suppliers(session)
+    company = session.scalar(select(Company).where(Company.tax_id == "12345678000190"))
+    site = session.scalar(select(ConstructionSite).where(ConstructionSite.company_id == company.id))
+    user = session.scalar(select(User).where(User.company_id == company.id))
+    wa_suppliers = session.scalars(
+        select(Supplier).where(Supplier.tax_id.in_(["55555501000155", "55555502000155"]))
+    ).all()
+
+    from datetime import timedelta
+
+    request = PurchaseRequest(
+        code=f"SC-{str(uuid.uuid4())[:6].upper()}",
+        company_id=company.id, construction_site_id=site.id, requested_by=user.id,
+        title="Cotação teste — concretagem Bloco B", priority="NORMAL",
+        required_at=utcnow() + timedelta(days=7),
+        constraints={"responseWindow": "24 horas", "freight": "CIF — entregue na obra"},
+    )
+    request.items = [
+        PurchaseRequestItem(client_item_id="item_1", raw_description="Cimento CP-II F 32, saco 50 kg",
+                            canonical_category="CEMENT", category_label="CEMENT", quantity=Decimal("50"), unit="BAG"),
+        PurchaseRequestItem(client_item_id="item_2", raw_description="Bloco cerâmico 14x19x39 cm",
+                            canonical_category="MASONRY_BLOCK", category_label="MASONRY_BLOCK", quantity=Decimal("800"), unit="UNIT"),
+    ]
+    session.add(request); session.flush()
+    for rank, supplier in enumerate(wa_suppliers, start=1):
+        session.add(SupplierSelection(purchase_request_id=request.id, supplier_id=supplier.id, selected=True, rank=rank))
+    session.commit()
+    return {"ok": True, "requestId": request.id, "code": request.code, "suppliers": [s.trade_name for s in wa_suppliers]}
+
+
 @app.get("/api/dashboard")
 def dashboard(session: Session = Depends(get_db)) -> dict:
     counts = {status.value: session.scalar(select(func.count()).select_from(PurchaseRequest).where(PurchaseRequest.status == status)) or 0 for status in RequestStatus}
@@ -398,6 +470,90 @@ def process_purchase_request(request_id: str, session: Session = Depends(get_db)
     if "__interrupt__" in result:
         response["interrupt"] = result["__interrupt__"][0].value
     return response
+
+
+@app.post("/api/purchase-requests/{request_id}/send-whatsapp")
+def send_request_whatsapp(
+    request_id: str,
+    session: Session = Depends(get_db),
+    token: str = "",
+    x_wa_token: str = Header(default=""),
+) -> dict:
+    """Envia a cotação por WhatsApp para os fornecedores selecionados (ação do operador)."""
+    _require_wa(token or x_wa_token)
+    request = session.get(PurchaseRequest, request_id)
+    if request is None:
+        raise HTTPException(404, "Cotação não encontrada")
+    rows = session.execute(
+        select(SupplierSelection, Supplier)
+        .join(Supplier, Supplier.id == SupplierSelection.supplier_id)
+        .where(SupplierSelection.purchase_request_id == request_id, SupplierSelection.selected.is_(True))
+    ).all()
+    if not rows:
+        raise HTTPException(422, "Nenhum fornecedor selecionado — processe a cotação antes")
+
+    from app.wa import send_text
+
+    site = session.get(ConstructionSite, request.construction_site_id)
+    lines = [f"🏗️ *Cotação {request.code}* — {request.title}"]
+    if site:
+        lines.append(f"Obra: {site.name} ({site.delivery_address.get('city', '')})")
+    lines.append("")
+    for i, item in enumerate(request.items, 1):
+        desc = item.normalized_description or item.raw_description
+        lines.append(f"{i}. {item.quantity:g} {item.unit} — {desc}")
+    lines.append("")
+    lines.append(f"Entrega até: {request.required_at.strftime('%d/%m/%Y')}")
+    lines.append("Responda esta mensagem com preço por item, frete e prazo de entrega.")
+    message = "\n".join(lines)
+
+    sent, failed = [], []
+    for _, supplier in rows:
+        if not supplier.phone:
+            failed.append(supplier.trade_name)
+            continue
+        (sent if send_text(supplier.phone, message) else failed).append(supplier.trade_name)
+    session.add(AgentEvent(
+        purchase_request_id=request_id,
+        event_type="WHATSAPP_SENT" if sent else "WHATSAPP_FAILED",
+        title="Cotação enviada por WhatsApp" if sent else "Falha no envio por WhatsApp",
+        detail=f"Enviada para: {', '.join(sent) or 'ninguém'}" + (f" · Falhou: {', '.join(failed)}" if failed else ""),
+        payload={"sent": sent, "failed": failed},
+    ))
+    session.commit()
+    return {"ok": bool(sent), "sent": sent, "failed": failed}
+
+
+def _register_supplier_reply(phone: str, text: str, push_name: str | None) -> None:
+    from app.database import SessionLocal
+    from app.wa import phone_variants
+
+    variants = phone_variants(phone)
+    if not variants:
+        return
+    with SessionLocal.begin() as session:
+        supplier = next(
+            (s for s in session.scalars(select(Supplier)).all() if phone_variants(s.phone or "") & variants),
+            None,
+        )
+        if supplier is None:
+            logger.info("mensagem de número não cadastrado como fornecedor — ignorada")
+            return
+        request_id = session.execute(
+            select(SupplierSelection.purchase_request_id)
+            .join(PurchaseRequest, PurchaseRequest.id == SupplierSelection.purchase_request_id)
+            .where(SupplierSelection.supplier_id == supplier.id)
+            .order_by(PurchaseRequest.created_at.desc())
+            .limit(1)
+        ).scalar_one_or_none()
+        session.add(AgentEvent(
+            purchase_request_id=request_id,
+            event_type="SUPPLIER_REPLY",
+            title=f"Resposta de {supplier.trade_name}" + (f" ({push_name})" if push_name else ""),
+            detail=text[:800],
+            payload={"supplierId": supplier.id, "phone": phone},
+        ))
+    logger.info("resposta de fornecedor registrada (%s)", supplier.trade_name)
 
 
 @app.post("/api/purchase-requests/{request_id}/clarifications")
