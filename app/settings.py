@@ -22,7 +22,7 @@ class Settings(BaseSettings):
         default="https://api.featherless.ai/v1", validation_alias="FEATHERLESS_BASE_URL"
     )
     featherless_model: str = Field(
-        default="meta-llama/Llama-3.3-70B-Instruct", validation_alias="FEATHERLESS_MODEL"
+        default="Qwen/Qwen2.5-72B-Instruct", validation_alias="FEATHERLESS_MODEL"
     )
 
     langfuse_public_key: str | None = Field(default=None, validation_alias="LANGFUSE_PUBLIC_KEY")
