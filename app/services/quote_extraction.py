@@ -89,9 +89,13 @@ def extract_quote(reply_text: str, item_descriptions: list[str]) -> QuoteExtract
         return fallback
     try:
         from app.llm import build_llm
+        from app.tracing import callbacks
 
         context = "Itens da cotação:\n" + "\n".join(f"- {d}" for d in item_descriptions)
-        response = build_llm().invoke(PROMPT + f"{context}\n\nMensagem do fornecedor:\n{reply_text}")
+        response = build_llm().invoke(
+            PROMPT + f"{context}\n\nMensagem do fornecedor:\n{reply_text}",
+            config={"callbacks": callbacks(), "run_name": "extrair-cotacao"},
+        )
         content = response.content if isinstance(response.content, str) else str(response.content)
         data = _extract_json(content)
         if not data:

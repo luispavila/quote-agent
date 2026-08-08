@@ -101,9 +101,14 @@ def normalize_item(description: str) -> NormalizationExtraction:
     if settings.featherless_api_key is None:
         return heuristic_normalize(description)
     try:
-        return _structured_llm().invoke([
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": description},
-        ])
+        from app.tracing import callbacks
+
+        return _structured_llm().invoke(
+            [
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": description},
+            ],
+            config={"callbacks": callbacks(), "run_name": "normalizar-item"},
+        )
     except Exception:
         return heuristic_normalize(description)

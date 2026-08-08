@@ -198,10 +198,14 @@ def build_procurement_graph():
 
 
 def start_procurement(request_id: str) -> dict:
-    config = {"configurable": {"thread_id": request_id}}
+    from app.tracing import callbacks
+
+    config = {"configurable": {"thread_id": request_id}, "callbacks": callbacks(), "run_name": "procurement"}
     return build_procurement_graph().invoke({"request_id": request_id}, config=config)
 
 
 def resume_procurement(request_id: str, answers: dict[str, str]) -> dict:
-    config = {"configurable": {"thread_id": request_id}}
+    from app.tracing import callbacks
+
+    config = {"configurable": {"thread_id": request_id}, "callbacks": callbacks(), "run_name": "procurement-resume"}
     return build_procurement_graph().invoke(Command(resume=answers), config=config)
