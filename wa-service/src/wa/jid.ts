@@ -1,4 +1,4 @@
-// Utilitários PUROS de JID/telefone (testáveis sem socket) — padrão herdado do funniie-baileys.
+// Utilitários PUROS de JID/telefone (testáveis sem socket).
 
 export function onlyDigits(v: string): string {
   return v.replace(/\D/g, "");

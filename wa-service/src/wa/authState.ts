@@ -3,8 +3,8 @@
  * - DATABASE_URL setada → Postgres (tabela wa_auth) — sobrevive a restarts sem disco pago
  * - senão → arquivos em AUTH_DIR (disco persistente / volume local)
  *
- * Padrão portado do RedisAuthState do funniie-baileys: JSON com BufferJSON
- * (chaves Signal carregam Buffers) e conversão de app-state-sync-key para proto.
+ * Serializa com BufferJSON (as chaves Signal do Baileys carregam Buffers) e
+ * converte app-state-sync-key de volta para proto na leitura.
  */
 
 import { access, rm } from "node:fs/promises";

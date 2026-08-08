@@ -96,7 +96,7 @@ Os contratos e decisões de produto ficam em [`docs/`](docs/README.md).
 ## WhatsApp (wa-service)
 
 Serviço próprio em `wa-service/` (Node 22 + TS estrito + Baileys rc11, **instância única**),
-inspirado no funniie-baileys mas ~10x menor. Auth state persiste em **Postgres** quando
+enxuto e focado num único número. Auth state persiste em **Postgres** quando
 `DATABASE_URL` está setada (tabela `wa_auth` criada sozinha — o Postgres free do Render serve
 e o pareamento sobrevive a deploys/hibernação), senão em disco (`AUTH_DIR`).
 
