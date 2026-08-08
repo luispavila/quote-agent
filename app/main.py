@@ -609,8 +609,10 @@ def _register_supplier_reply(phone: str, text: str, push_name: str | None) -> No
 
 
 class CloseQuote(BaseModel):
-    supplier_name: str
-    markup_percent: float = Field(default=0, ge=0, le=100)
+    supplier_name: str = Field(alias="supplierName")
+    markup_percent: float = Field(default=0, ge=0, le=100, alias="markupPercent")
+
+    model_config = {"populate_by_name": True}
 
 
 @app.post("/api/purchase-requests/{request_id}/close")
