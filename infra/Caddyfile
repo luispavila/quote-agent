@@ -1,0 +1,6 @@
+# DOMAIN=":80" (default) → HTTP puro, bom p/ local e primeiro deploy por IP.
+# DOMAIN="cotacao.exemplo.com" ou "<EIP>.sslip.io" → HTTPS automático (Let's Encrypt).
+{$DOMAIN} {
+	encode gzip
+	reverse_proxy api:8000
+}

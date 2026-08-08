@@ -1,0 +1,28 @@
+# Blueprint do Render: New + > Blueprint > apontar para este repo.
+# Deploy automático a cada push na main (autoDeploy default).
+services:
+  - type: web
+    name: quote-agent
+    runtime: docker
+    region: virginia
+    plan: starter        # sempre de pé (free hiberna e dá cold start de ~1 min na demo)
+    healthCheckPath: /health
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: ANTHROPIC_API_KEY
+        sync: false      # preencher no painel do Render
+      - key: ANTHROPIC_MODEL
+        value: claude-sonnet-5
+      - key: LLM_MAX_TOKENS
+        value: "1024"
+      - key: LANGFUSE_PUBLIC_KEY
+        sync: false
+      - key: LANGFUSE_SECRET_KEY
+        sync: false
+      - key: LANGFUSE_HOST
+        value: https://us.cloud.langfuse.com
+      - key: FEATHERLESS_API_KEY
+        sync: false
+      - key: FEATHERLESS_BASE_URL
+        value: https://api.featherless.ai/v1

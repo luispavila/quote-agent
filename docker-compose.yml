@@ -1,0 +1,52 @@
+# Roda local (build) e em produção na EC2 (imagem do ECR via API_IMAGE).
+# Local:  docker compose up --build
+# EC2:    API_IMAGE=<ecr>:<tag> docker compose up -d  (via GitHub Action → SSM)
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN:-:80}
+    volumes:
+      - ./infra/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+
+  api:
+    image: ${API_IMAGE:-quote-agent-api:local}
+    build: .
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      APP_ENV: ${APP_ENV:-dev}
+    expose:
+      - "8000"
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-quote}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-quote}
+      POSTGRES_DB: ${POSTGRES_DB:-quote}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    ports:
+      - "55432:5432"  # porta alta p/ não colidir com o devcontainer do funniie-core
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-quote}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  caddy_data:
+  caddy_config:
+  pg_data:
