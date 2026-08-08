@@ -627,58 +627,68 @@ def close_quote(
     request = session.get(PurchaseRequest, request_id)
     if request is None:
         raise HTTPException(404, "Cotação não encontrada")
+
+    existing_events = session.scalars(
+        select(AgentEvent).where(AgentEvent.purchase_request_id == request_id)
+    ).all()
+    # idempotência: já fechado → não reenvia nada (evita spam em retry/duplo-clique)
+    closed = next((e for e in existing_events if e.event_type == "ORDER_CLOSED"), None)
+    if closed:
+        p = closed.payload
+        return {"ok": True, "alreadyClosed": True, "supplierName": p.get("supplierName"),
+                "cost": p.get("cost"), "finalPrice": p.get("finalPrice"), "notified": []}
+
     quote_event = next(
-        (e for e in session.scalars(
-            select(AgentEvent).where(
-                AgentEvent.purchase_request_id == request_id,
-                AgentEvent.event_type == "SUPPLIER_QUOTE",
-            )
-        ).all() if e.payload.get("supplierName") == body.supplier_name),
+        (e for e in existing_events
+         if e.event_type == "SUPPLIER_QUOTE" and e.payload.get("supplierName") == body.supplier_name),
         None,
     )
     base = (quote_event.payload.get("grandTotal") if quote_event else None) or 0
     final_price = round(base * (1 + body.markup_percent / 100), 2)
-    request.status = RequestStatus.SUPPLIERS_SELECTED
-    session.add(AgentEvent(
-        purchase_request_id=request_id,
-        event_type="ORDER_CLOSED",
-        title=f"Pedido fechado com {body.supplier_name}",
-        detail=f"Custo R$ {base:.2f} + markup {body.markup_percent:g}% = R$ {final_price:.2f} para o cliente.",
-        payload={"supplierName": body.supplier_name, "cost": base, "markupPercent": body.markup_percent, "finalPrice": final_price},
-    ))
-    session.commit()
 
-    # Avisa os fornecedores por WhatsApp: vencedor confirma, os demais recebem retorno.
+    # Avisa os fornecedores por WhatsApp ANTES de gravar o fechamento — vencedor confirma, demais recebem retorno.
     notified = []
-    if settings.wa_configured and hmac.compare_digest(token or x_wa_token, settings.wa_shared_token.get_secret_value()):
+    wa_ok = settings.wa_configured and bool(token or x_wa_token) and hmac.compare_digest(
+        token or x_wa_token, settings.wa_shared_token.get_secret_value()
+    )
+    if wa_ok:
         from app.wa import send_text
 
-        rows = session.execute(
+        suppliers = session.execute(
             select(Supplier)
             .join(SupplierSelection, SupplierSelection.supplier_id == Supplier.id)
             .where(SupplierSelection.purchase_request_id == request_id, SupplierSelection.selected.is_(True))
         ).scalars().all()
-        for supplier in rows:
+        for supplier in suppliers:
             if not supplier.phone:
                 continue
             if supplier.trade_name == body.supplier_name:
-                msg = (f"✅ Fechamos o pedido da cotação *{request.code}* com vocês! "
+                msg = (f"✅ Fechamos o pedido da cotação {request.code} com vocês! "
                        f"Nossa equipe entra em contato para confirmar entrega e pagamento. Obrigado!")
             else:
-                msg = (f"Olá! Sobre a cotação *{request.code}*: desta vez seguimos com outro fornecedor. "
-                       f"Agradecemos muito a proposta e contamos com vocês nas próximas. 🙏")
-            if send_text(supplier.phone, msg):
-                notified.append(supplier.trade_name)
-        if notified:
-            with SessionLocal.begin() as s2:
-                s2.add(AgentEvent(
-                    purchase_request_id=request_id,
-                    event_type="SUPPLIERS_NOTIFIED",
-                    title="Fornecedores avisados por WhatsApp",
-                    detail=f"Vencedor: {body.supplier_name} · Avisados: {', '.join(notified)}",
-                    payload={"winner": body.supplier_name, "notified": notified},
-                ))
+                msg = (f"Olá! Sobre a cotação {request.code}: desta vez seguimos com outro fornecedor. "
+                       f"Agradecemos a proposta e contamos com vocês nas próximas. 🙏")
+            try:
+                if send_text(supplier.phone, msg):
+                    notified.append(supplier.trade_name)
+            except Exception:
+                logger.exception("falha ao avisar fornecedor %s", supplier.trade_name)
 
+    request.status = RequestStatus.SUPPLIERS_SELECTED
+    session.add(AgentEvent(
+        purchase_request_id=request_id, event_type="ORDER_CLOSED",
+        title=f"Pedido fechado com {body.supplier_name}",
+        detail=f"Custo R$ {base:.2f} + markup {body.markup_percent:g}% = R$ {final_price:.2f} para o cliente.",
+        payload={"supplierName": body.supplier_name, "cost": base, "markupPercent": body.markup_percent, "finalPrice": final_price},
+    ))
+    if notified:
+        session.add(AgentEvent(
+            purchase_request_id=request_id, event_type="SUPPLIERS_NOTIFIED",
+            title="Fornecedores avisados por WhatsApp",
+            detail=f"Vencedor: {body.supplier_name} · Avisados: {', '.join(notified)}",
+            payload={"winner": body.supplier_name, "notified": notified},
+        ))
+    session.commit()
     return {"ok": True, "supplierName": body.supplier_name, "cost": base, "finalPrice": final_price, "notified": notified}
 
 
