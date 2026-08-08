@@ -139,6 +139,15 @@ def request_to_dict(request: PurchaseRequest, session: Session) -> dict:
             "detail": event.detail,
             "createdAt": event.created_at.isoformat(),
         } for event in events],
+        "quotes": [{
+            "supplierName": event.payload.get("supplierName"),
+            "grandTotal": event.payload.get("grandTotal"),
+            "freight": event.payload.get("freight"),
+            "deliveryDays": event.payload.get("deliveryDays"),
+            "paymentTerms": event.payload.get("paymentTerms"),
+            "items": event.payload.get("items", []),
+            "receivedAt": event.created_at.isoformat(),
+        } for event in events if event.event_type == "SUPPLIER_QUOTE"],
         "discoveredSuppliers": [{
             "id": discovery.id,
             "name": discovery.supplier_name,
@@ -346,9 +355,10 @@ def seed_demo(session: Session = Depends(get_db)) -> dict:
 def seed_whatsapp_suppliers(session: Session = Depends(get_db)) -> dict:
     """Cria/atualiza 2 fornecedores com números reais de teste para a demo por WhatsApp."""
     seed_demo(session)  # garante empresa/obra/usuário
+    # Números reais que atuarão como empresas fornecedoras na demo
     test_suppliers = [
-        ("Fornecedor Teste A", "55555501000155", "+5534998418420", ["Uberlândia", "Campinas"]),
-        ("Fornecedor Teste B", "55555502000155", "+5511998567712", ["São Paulo", "Campinas"]),
+        ("Triângulo Materiais de Construção", "55555501000155", "+5534998418420", ["Uberlândia", "Campinas", "São Paulo"]),
+        ("Paulista Suprimentos para Obra", "55555502000155", "+5511998567712", ["São Paulo", "Campinas"]),
     ]
     created, updated = [], []
     for name, tax_id, phone, cities in test_suppliers:
@@ -553,7 +563,67 @@ def _register_supplier_reply(phone: str, text: str, push_name: str | None) -> No
             detail=text[:800],
             payload={"supplierId": supplier.id, "phone": phone},
         ))
+        supplier_name, item_descs = supplier.trade_name, []
+        if request_id:
+            req = session.get(PurchaseRequest, request_id)
+            item_descs = [i.normalized_description or i.raw_description for i in req.items] if req else []
     logger.info("resposta de fornecedor registrada (%s)", supplier.trade_name)
+
+    # Extrai preços estruturados da resposta (a "mágica" da demo) — fora da transação anterior
+    if request_id:
+        from app.services.quote_extraction import extract_quote
+
+        quote = extract_quote(text, item_descs)
+        with SessionLocal.begin() as session:
+            session.add(AgentEvent(
+                purchase_request_id=request_id,
+                event_type="SUPPLIER_QUOTE",
+                title=f"Cotação de {supplier_name}",
+                detail=(f"Total R$ {quote.grand_total:.2f}" if quote.grand_total else "Cotação recebida")
+                + (f" · entrega em {quote.delivery_days} dias" if quote.delivery_days else ""),
+                payload={
+                    "supplierName": supplier_name,
+                    "grandTotal": quote.grand_total,
+                    "freight": quote.freight,
+                    "deliveryDays": quote.delivery_days,
+                    "paymentTerms": quote.payment_terms,
+                    "items": [i.model_dump() for i in quote.items],
+                },
+            ))
+
+
+class CloseQuote(BaseModel):
+    supplier_name: str
+    markup_percent: float = Field(default=0, ge=0, le=100)
+
+
+@app.post("/api/purchase-requests/{request_id}/close")
+def close_quote(request_id: str, body: CloseQuote, session: Session = Depends(get_db)) -> dict:
+    """Fecha o pedido no fornecedor escolhido, com markup aplicado (aprovação do comprador)."""
+    request = session.get(PurchaseRequest, request_id)
+    if request is None:
+        raise HTTPException(404, "Cotação não encontrada")
+    quote_event = next(
+        (e for e in session.scalars(
+            select(AgentEvent).where(
+                AgentEvent.purchase_request_id == request_id,
+                AgentEvent.event_type == "SUPPLIER_QUOTE",
+            )
+        ).all() if e.payload.get("supplierName") == body.supplier_name),
+        None,
+    )
+    base = (quote_event.payload.get("grandTotal") if quote_event else None) or 0
+    final_price = round(base * (1 + body.markup_percent / 100), 2)
+    request.status = RequestStatus.SUPPLIERS_SELECTED
+    session.add(AgentEvent(
+        purchase_request_id=request_id,
+        event_type="ORDER_CLOSED",
+        title=f"Pedido fechado com {body.supplier_name}",
+        detail=f"Custo R$ {base:.2f} + markup {body.markup_percent:g}% = R$ {final_price:.2f} para o cliente.",
+        payload={"supplierName": body.supplier_name, "cost": base, "markupPercent": body.markup_percent, "finalPrice": final_price},
+    ))
+    session.commit()
+    return {"ok": True, "supplierName": body.supplier_name, "cost": base, "finalPrice": final_price}
 
 
 @app.post("/api/purchase-requests/{request_id}/clarifications")
