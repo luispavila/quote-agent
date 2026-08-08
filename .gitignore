@@ -8,6 +8,8 @@ __pycache__/
 .ruff_cache/
 dist/
 *.egg-info/
+*.db
+*.sqlite3
 .DS_Store
 node_modules/
 wa-service/dist/

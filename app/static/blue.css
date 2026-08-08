@@ -1,0 +1,28 @@
+:root {
+  --green: #0b2345;
+  --green2: #123d73;
+  --cream: #f5f8fc;
+  --line: #dce5f0;
+  --text: #10233f;
+  --muted: #63748a;
+  --gold: #2878d0;
+  --orange: #1e67b1;
+  --soft: #eaf1fa;
+}
+
+.sidebar { color: #eaf2fc; }
+.brand, .sidebar footer { border-color: #183a65; }
+.brand-mark { background: #f5f9ff; }
+.connection, .trial { background: #102f57; }
+.connection i { background: #4c9aec; }
+.trial small, nav > small { color: #91afd0; }
+.trial span, .sidebar footer span { color: #bdd0e5; }
+.sidebar nav button { color: #c9d8e9; }
+.step.done i { background: #2878d0; }
+.badge { background: #e8f2ff; color: #155ba5; }
+.field input:focus, .field select:focus, .field textarea:focus { border-color: #2878d0; }
+.check { background: #e6f1ff; color: #1768b5; }
+.rank-table th, .notice { background: #eaf1fa; }
+.field input, .field select, .field textarea,
+.material-row input, .material-row select, .search { background: #f8fbff; }
+.toast { background: #0b2345; }

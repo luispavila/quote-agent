@@ -1,0 +1,32 @@
+{
+  "purchaseRequestId": "pr_001",
+  "constructionSiteId": "site_001",
+  "selectionPolicyVersion": "supplier-selection-v1",
+  "delivery": {
+    "city": "Campinas",
+    "state": "SP",
+    "postalCode": "13031100",
+    "requiredAt": "2026-08-12T16:00:00-03:00",
+    "unloadingRequired": true
+  },
+  "commercialRequirements": {
+    "taxInvoiceRequired": true,
+    "paymentTerms": "NET_28"
+  },
+  "items": [
+    {
+      "itemId": "pri_001",
+      "canonicalCategory": "CEMENT",
+      "normalizedDescription": "Cimento Portland CP-II, classe 32, saco de 50 kg",
+      "quantity": 100,
+      "unit": "BAG"
+    },
+    {
+      "itemId": "pri_003",
+      "canonicalCategory": "MORTAR",
+      "normalizedDescription": "Argamassa AC-II, saco de 20 kg",
+      "quantity": 30,
+      "unit": "BAG"
+    }
+  ]
+}

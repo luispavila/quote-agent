@@ -1,104 +1,94 @@
-# quote-agent
+# Nexo Compras — Procurement Agent
 
-Fundação genérica de um agente de IA conversacional em produção: **FastAPI + LangGraph +
-Claude (Anthropic) + Langfuse**, deploy contínuo no **Render** (deploy-on-push via Dockerfile).
+Aplicação full-stack de procurement para construção civil. Recebe listas de materiais,
+normaliza especificações, pausa para esclarecimento humano e seleciona fornecedores por
+categoria, região, risco e histórico.
 
-> Este repositório é a fundação open source usada como ponto de partida (declarado) no
-> **Hack2L — AI Agents Hackathon (08/08/2026)**. A lógica de negócio da demo nasce no dia do evento.
+Stack: FastAPI, SQLAlchemy, PostgreSQL, LangGraph, Featherless e frontend web responsivo.
+A integração de WhatsApp permanece fora do escopo.
 
-## Arquitetura (Marco 0)
+## Fluxo
 
-```
-cliente ──HTTP──> Caddy (80/443) ──> FastAPI /chat ──> LangGraph (1 nó) ──> Claude Sonnet
-                                                          │                    └─ fallback Featherless (opcional)
-                                                          └──> Langfuse cloud (trace por sessão; no-op sem chaves)
-Postgres 16 no compose (checkpointer do agente nos próximos marcos)
-```
-
-## Rodar local (3 comandos)
-
-```bash
-cp .env.example .env          # preencha ANTHROPIC_API_KEY (e LANGFUSE_* se quiser traces)
-docker compose up --build -d
-curl -s localhost/health && curl -s localhost/chat -X POST -H 'content-type: application/json' -d '{"message":"quanto custa um saco de cimento?"}'
+```text
+Cadastro → lista de compras → normalização com Featherless
+→ esclarecimento humano → retomada do LangGraph
+→ seleção auditável de fornecedores
 ```
 
-Testes: `uv run pytest` (ou `docker run --rm -v $PWD:/w -w /w ghcr.io/astral-sh/uv:python3.13-bookworm uv run pytest`).
+O `thread_id` do LangGraph é o ID da solicitação. O nó de esclarecimento usa `interrupt()`
+e a API retoma o mesmo fluxo com `Command(resume=answers)`. Sem uma chave Featherless ou
+em caso de indisponibilidade da API, a demo usa o normalizador determinístico de segurança.
 
-## Deploy em produção (Render, ~15 min)
+## Rodar localmente no Windows
 
-1. Crie a conta em [render.com](https://render.com) (login com GitHub) e autorize o repo.
-2. **New + → Blueprint** → selecione `quote-agent` — o [render.yaml](render.yaml) define tudo
-   (Docker, região Virginia, plano Starter, health check em `/health`).
-3. Preencha as env vars marcadas no painel: `ANTHROPIC_API_KEY` (obrigatória),
-   `LANGFUSE_PUBLIC_KEY`/`LANGFUSE_SECRET_KEY` (traces) e `FEATHERLESS_API_KEY` (opcional).
-4. Deploy. A partir daí, **todo `git push` na `main` redeploya sozinho** — sem Action, sem secrets no GitHub.
+Crie uma chave em `https://featherless.ai/account/api-keys`. Em seguida:
 
-Prova de produção:
-
-```bash
-curl -s https://<app>.onrender.com/health
-curl -s https://<app>.onrender.com/chat -X POST -H 'content-type: application/json' -d '{"message":"oi"}'
+```powershell
+Set-Location "C:\Users\Amanda\Documents\ChatGPT\HACK2L v2"
+Copy-Item .env.example .env
+notepad .env
 ```
 
-→ resposta do Claude + trace visível no projeto do [Langfuse](https://cloud.langfuse.com).
+Preencha somente esta linha no `.env`:
 
-> Plano **Starter** de propósito: o free tier hiberna com inatividade e o cold start (~1 min)
-> mataria a demo ao vivo.
+```text
+FEATHERLESS_API_KEY=sua_chave_aqui
+```
 
-### Plano B: AWS EC2 (scriptado, não usado por padrão)
+Instale as dependências, caso ainda não tenha feito, e inicie a aplicação:
 
-`infra/aws/` guarda o caminho completo para EC2 t3.small + docker compose: `aws-bootstrap.sh`
-(ECR, OIDC role, EC2, Elastic IP) e `github-deploy.yml` (mover para `.github/workflows/` para
-ativar o deploy OIDC → ECR → SSM). Útil se quisermos citar a infra da patrocinadora no pitch.
+```powershell
+py -3.13 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -e ".[dev]"
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --reload-dir app
+```
+
+Se a `.venv` já existe, execute apenas o último comando. Abra `http://127.0.0.1:8000/`.
+O uso é local, mas as inferências são remotas: o backend chama a API Featherless pela
+internet. Não é necessário instalar Ollama nem baixar modelos.
+
+Verifique a configuração:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/health
+```
+
+O resultado deve conter `llm_provider: featherless` e `llm_configured: true`.
+
+## Docker
+
+```powershell
+Copy-Item .env.example .env
+docker compose up --build
+```
+
+Abra `http://localhost/`. O compose executa FastAPI, PostgreSQL e Caddy; a inferência
+continua sendo feita pela Featherless.
+
+## Deploy
+
+O `render.yaml` já está configurado para Featherless. No painel do Render, cadastre
+`FEATHERLESS_API_KEY` como secret e `DATABASE_URL` com a conexão PostgreSQL. O mesmo modelo
+e os mesmos contratos são usados localmente e online.
+
+## Testes
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest -q
+```
 
 ## Endpoints
 
-| Método | Rota      | Descrição |
-|--------|-----------|-----------|
-| GET    | `/health` | Status, modelo configurado, flags de LLM/Langfuse |
-| POST   | `/chat`   | `{message, session_id?}` → resposta do agente (memória por `session_id`) |
+| Método | Rota | Descrição |
+|---|---|---|
+| GET | `/health` | Configuração e status da aplicação |
+| GET | `/` | Interface web |
+| POST | `/api/demo/seed` | Cria os dados-base da demo |
+| GET | `/api/bootstrap` | Empresa, obra e usuário disponíveis |
+| GET | `/api/dashboard` | Métricas operacionais |
+| GET/POST | `/api/purchase-requests` | Lista ou cria solicitações |
+| GET | `/api/purchase-requests/{id}` | Detalhe e trilha de auditoria |
+| POST | `/api/purchase-requests/{id}/process` | Inicia o LangGraph |
+| POST | `/api/purchase-requests/{id}/clarifications` | Retoma o LangGraph |
 
-## Variáveis de ambiente
-
-Ver [.env.example](.env.example). Segredos nunca vão para o git; em produção vivem em
-`/opt/quote-agent/.env` na EC2. Sem `LANGFUSE_*` a app roda sem tracing (no-op silencioso).
-
-## Checklist do dia do evento
-
-- [ ] Tornar este repo **público** antes de começar (`gh repo edit --visibility public --accept-visibility-change-consequences`) e declará-lo como ponto de partida.
-- [ ] Chaves no lugar: `ANTHROPIC_API_KEY`, `LANGFUSE_*`, perk Featherless (painel do Render).
-- [ ] `curl https://<app>.onrender.com/health` verde no telão. 😄
-- [ ] Commits da lógica de negócio começam no repositório do evento a partir da manhã.
-
-## WhatsApp (wa-service)
-
-Serviço próprio em `wa-service/` (Node 22 + TS estrito + Baileys rc11, **instância única**),
-inspirado no funniie-baileys mas ~10x menor. Auth state persiste em disco (`/data`);
-no Render, num Persistent Disk — o pareamento sobrevive a deploys.
-
-Fluxo: mensagem chega no WhatsApp → Baileys → `POST /webhooks/wa` na api (token `X-WA-Token`)
-→ agente LangGraph responde → api chama `POST /messages/text` no wa-service → WhatsApp.
-
-**Parear o número (uma vez):**
-
-```bash
-# abra no browser (mostra o QR; escaneie com WhatsApp > Aparelhos conectados):
-https://<wa-service>.onrender.com/pairing/qr.png?token=<WA_SHARED_TOKEN>
-# ou por código no celular:
-curl -X POST https://<wa-service>.onrender.com/pairing/code -H "x-wa-token: <token>" \
-  -H 'content-type: application/json' -d '{"phone":"5511987654321"}'
-# conferir:
-curl https://<wa-service>.onrender.com/status -H "x-wa-token: <token>"
-```
-
-Local: os mesmos endpoints em `localhost:53001` (token default `dev-token-0123456789`).
-Depois de pareado, mande uma mensagem de outro número para o número pareado — o agente responde.
-
-## Roadmap
-
-1. ~~wa-service (Baileys)~~ ✅
-2. **Agente de cotação** — tools `parse_pedido`/`cotar`/`consolidar`/`aplicar_markup`/…,
-   checkpointer Postgres, aprovação via `interrupt()`.
-3. **Dashboard** — tabela comparativa e feed de eventos.
-4. **E2E real** — números de teste dos fornecedores, roteiro da demo.
+Os contratos e decisões de produto ficam em [`docs/`](docs/README.md).

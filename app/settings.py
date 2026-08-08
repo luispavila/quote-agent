@@ -12,9 +12,12 @@ class Settings(BaseSettings):
     )
 
     app_env: str = Field(default="dev", validation_alias="APP_ENV")
+    database_url: str = Field(
+        default="sqlite:///./quote_agent.db", validation_alias="DATABASE_URL"
+    )
+    cors_origins: str = Field(default="*", validation_alias="CORS_ORIGINS")
 
-    anthropic_api_key: SecretStr | None = Field(default=None, validation_alias="ANTHROPIC_API_KEY")
-    anthropic_model: str = Field(default="claude-sonnet-5", validation_alias="ANTHROPIC_MODEL")
+    llm_provider: str = Field(default="featherless", validation_alias="LLM_PROVIDER")
     max_tokens: int = Field(default=1024, ge=64, validation_alias="LLM_MAX_TOKENS")
 
     featherless_api_key: SecretStr | None = Field(default=None, validation_alias="FEATHERLESS_API_KEY")
@@ -22,8 +25,9 @@ class Settings(BaseSettings):
         default="https://api.featherless.ai/v1", validation_alias="FEATHERLESS_BASE_URL"
     )
     featherless_model: str = Field(
-        default="Qwen/Qwen2.5-72B-Instruct", validation_alias="FEATHERLESS_MODEL"
+        default="Qwen/Qwen2.5-7B-Instruct", validation_alias="FEATHERLESS_MODEL"
     )
+    featherless_temperature: float = Field(default=0, ge=0, le=2, validation_alias="FEATHERLESS_TEMPERATURE")
 
     wa_service_url: str | None = Field(default=None, validation_alias="WA_SERVICE_URL")
     wa_shared_token: SecretStr | None = Field(default=None, validation_alias="WA_SHARED_TOKEN")
@@ -49,21 +53,12 @@ class Settings(BaseSettings):
         return bool(self.wa_service_url and self.wa_shared_token)
 
     @property
-    def llm_configured(self) -> bool:
-        return self.featherless_api_key is not None or self.anthropic_api_key is not None
+    def cors_origin_list(self) -> list[str]:
+        return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
 
     @property
-    def primary_provider(self) -> str | None:
-        # Featherless é o primário (perk do evento); Anthropic entra como fallback
-        if self.featherless_api_key is not None:
-            return "featherless"
-        if self.anthropic_api_key is not None:
-            return "anthropic"
-        return None
-
-    @property
-    def primary_model(self) -> str:
-        return self.featherless_model if self.primary_provider == "featherless" else self.anthropic_model
+    def active_model(self) -> str:
+        return self.featherless_model
 
 
 @lru_cache

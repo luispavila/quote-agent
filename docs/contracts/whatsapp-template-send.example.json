@@ -1,0 +1,23 @@
+{
+  "messaging_product": "whatsapp",
+  "to": "5519988887777",
+  "type": "template",
+  "template": {
+    "name": "supplier_rfq_request_v1",
+    "language": {
+      "code": "pt_BR"
+    },
+    "components": [
+      {
+        "type": "body",
+        "parameters": [
+          { "type": "text", "text": "João" },
+          { "type": "text", "text": "Construtora Aurora" },
+          { "type": "text", "text": "RFQ-1024" },
+          { "type": "text", "text": "12/08/2026" },
+          { "type": "text", "text": "Campinas/SP" }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,53 @@
+{
+  "companyId": "cmp_001",
+  "constructionSiteId": "site_001",
+  "requestedBy": "usr_001",
+  "requestTitle": "Materiais para concretagem do bloco A",
+  "requiredAt": "2026-08-12T16:00:00-03:00",
+  "priority": "HIGH",
+  "budget": {
+    "currency": "BRL",
+    "maximumAmount": 15000
+  },
+  "delivery": {
+    "addressSource": "CONSTRUCTION_SITE",
+    "partialDeliveryAllowed": false
+  },
+  "commercialConstraints": {
+    "paymentTerms": "NET_28",
+    "taxInvoiceRequired": true,
+    "substitutionsAllowed": false,
+    "splitOrderAllowed": true
+  },
+  "notes": "Materiais necessários antes do início da concretagem.",
+  "items": [
+    {
+      "clientItemId": "item_001",
+      "rawDescription": "100 sacos de cimento CP-II de 50 kg",
+      "quantity": 100,
+      "unit": "BAG",
+      "referenceUnitPrice": null,
+      "maximumUnitPrice": null,
+      "notes": null
+    },
+    {
+      "clientItemId": "item_002",
+      "rawDescription": "200 blocos de concreto 14x19x39 cm",
+      "quantity": 200,
+      "unit": "UNIT",
+      "referenceUnitPrice": null,
+      "maximumUnitPrice": null,
+      "notes": "Não aceitar bloco cerâmico."
+    },
+    {
+      "clientItemId": "item_003",
+      "rawDescription": "30 sacos de argamassa AC-II de 20 kg",
+      "quantity": 30,
+      "unit": "BAG",
+      "referenceUnitPrice": 28.5,
+      "maximumUnitPrice": 32,
+      "notes": null
+    }
+  ]
+}
+

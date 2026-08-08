@@ -1,0 +1,38 @@
+{
+  "clarificationId": "clr_001",
+  "purchaseRequestId": "pr_001",
+  "requestVersion": 1,
+  "status": "WAITING_USER",
+  "questions": [
+    {
+      "questionId": "clq_001",
+      "itemId": "pri_001",
+      "field": "specifications.strengthClass",
+      "severity": "BLOCKING",
+      "reasonCode": "REQUIRED_FOR_COMPARABILITY",
+      "question": "Qual é a classe de resistência do cimento CP-II?",
+      "helpText": "Fornecedores podem oferecer classes diferentes, o que impede a comparação direta.",
+      "answerType": "SINGLE_CHOICE",
+      "options": [
+        {
+          "value": "25",
+          "label": "Classe 25"
+        },
+        {
+          "value": "32",
+          "label": "Classe 32"
+        },
+        {
+          "value": "40",
+          "label": "Classe 40"
+        },
+        {
+          "value": "ANY",
+          "label": "Aceito qualquer classe"
+        }
+      ],
+      "allowFreeText": true
+    }
+  ],
+  "createdAt": "2026-08-08T10:02:01-03:00"
+}

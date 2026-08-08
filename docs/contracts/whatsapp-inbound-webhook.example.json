@@ -1,0 +1,37 @@
+{
+  "object": "whatsapp_business_account",
+  "entry": [
+    {
+      "id": "WABA_ID",
+      "changes": [
+        {
+          "field": "messages",
+          "value": {
+            "messaging_product": "whatsapp",
+            "metadata": {
+              "display_phone_number": "551930001234",
+              "phone_number_id": "PHONE_NUMBER_ID"
+            },
+            "contacts": [
+              {
+                "profile": { "name": "João Ferreira" },
+                "wa_id": "5519988887777"
+              }
+            ],
+            "messages": [
+              {
+                "from": "5519988887777",
+                "id": "wamid.INBOUND_EXAMPLE",
+                "timestamp": "1786200000",
+                "type": "text",
+                "text": {
+                  "body": "Tenho cimento a 34,50. Entrego segunda; frete 150."
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

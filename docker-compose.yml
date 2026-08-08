@@ -26,10 +26,17 @@ services:
         required: false
     environment:
       APP_ENV: ${APP_ENV:-dev}
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://quote:quote@postgres:5432/quote}
+      LLM_PROVIDER: featherless
+      FEATHERLESS_BASE_URL: ${FEATHERLESS_BASE_URL:-https://api.featherless.ai/v1}
+      FEATHERLESS_MODEL: ${FEATHERLESS_MODEL:-Qwen/Qwen2.5-7B-Instruct}
       WA_SERVICE_URL: http://wa-service:3001
       WA_SHARED_TOKEN: ${WA_SHARED_TOKEN:-dev-token-0123456789}
     expose:
       - "8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   wa-service:
     image: ${WA_IMAGE:-quote-agent-wa:local}
@@ -43,7 +50,7 @@ services:
     volumes:
       - wa_auth:/data
     ports:
-      - "53001:3001"  # curl -X POST localhost:53001/pairing/qr -H "x-wa-token: ..."
+      - "53001:3001"
 
   postgres:
     image: postgres:16-alpine

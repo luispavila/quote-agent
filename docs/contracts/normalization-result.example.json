@@ -1,0 +1,59 @@
+{
+  "normalizationRunId": "nrm_001",
+  "purchaseRequestId": "pr_001",
+  "status": "NEEDS_CLARIFICATION",
+  "modelVersion": "normalizer-v1",
+  "catalogVersion": "construction-catalog-2026-08-08",
+  "items": [
+    {
+      "itemId": "pri_001",
+      "sourceVersion": 1,
+      "rawDescription": "100 sacos de cimento CP-II de 50 kg",
+      "category": {
+        "categoryId": "cat_cement",
+        "code": "CEMENT",
+        "name": "Cimento",
+        "confidence": 0.99
+      },
+      "quantity": {
+        "value": 100,
+        "unit": "BAG",
+        "source": "USER_EXPLICIT",
+        "confidence": 1
+      },
+      "specifications": {
+        "cementType": {
+          "value": "CP-II",
+          "source": "USER_EXPLICIT",
+          "confidence": 0.99
+        },
+        "strengthClass": {
+          "value": null,
+          "source": null,
+          "confidence": 0
+        },
+        "packageWeightKg": {
+          "value": 50,
+          "source": "USER_EXPLICIT",
+          "confidence": 0.99
+        },
+        "acceptedBrands": {
+          "value": [],
+          "source": null,
+          "confidence": 1
+        }
+      },
+      "normalizedDescription": null,
+      "normalizationStatus": "NEEDS_CLARIFICATION",
+      "missingCriticalFields": [
+        "strengthClass"
+      ],
+      "contradictions": [],
+      "warnings": [],
+      "clarificationQuestionIds": [
+        "clq_001"
+      ]
+    }
+  ],
+  "createdAt": "2026-08-08T10:02:00-03:00"
+}

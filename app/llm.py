@@ -1,8 +1,4 @@
-"""Fábrica do modelo: Featherless (perk do evento) primário, Claude como fallback.
-
-Basta UMA das chaves para a app funcionar; com as duas, o fallback segura falhas
-do primário (saldo, rate limit, indisponibilidade) sem derrubar a demo.
-"""
+"""Fábrica do modelo Featherless usando a API compatível com OpenAI."""
 
 from functools import lru_cache
 
@@ -11,40 +7,31 @@ from langchain_core.language_models import BaseChatModel
 from app.settings import get_settings
 
 
-def _featherless(settings) -> BaseChatModel:
+def _featherless_model() -> BaseChatModel:
     from langchain_openai import ChatOpenAI
 
+    settings = get_settings()
+    if settings.featherless_api_key is None:
+        raise RuntimeError("FEATHERLESS_API_KEY não configurada")
     return ChatOpenAI(
         model=settings.featherless_model,
-        base_url=settings.featherless_base_url,
+        base_url=settings.featherless_base_url.rstrip("/"),
         api_key=settings.featherless_api_key,
+        temperature=settings.featherless_temperature,
+        seed=42,
         max_tokens=settings.max_tokens,
-        timeout=60.0,
-        max_retries=1,
-    )
-
-
-def _anthropic(settings) -> BaseChatModel:
-    from langchain_anthropic import ChatAnthropic
-
-    return ChatAnthropic(
-        model=settings.anthropic_model,
-        max_tokens=settings.max_tokens,
-        api_key=settings.anthropic_api_key,
-        timeout=60.0,
-        max_retries=1,
+        timeout=90.0,
+        max_retries=2,
+        default_headers={
+            "HTTP-Referer": "https://github.com/luispavila/quote-agent",
+            "X-Title": "Nexo Compras",
+        },
     )
 
 
 @lru_cache
 def build_llm() -> BaseChatModel:
     settings = get_settings()
-    models: list[BaseChatModel] = []
-    if settings.featherless_api_key is not None:
-        models.append(_featherless(settings))
-    if settings.anthropic_api_key is not None:
-        models.append(_anthropic(settings))
-    if not models:
-        raise RuntimeError("Configure FEATHERLESS_API_KEY e/ou ANTHROPIC_API_KEY")
-    primary, *fallbacks = models
-    return primary.with_fallbacks(fallbacks) if fallbacks else primary
+    if settings.llm_provider != "featherless":
+        raise RuntimeError("LLM_PROVIDER deve ser 'featherless'")
+    return _featherless_model()

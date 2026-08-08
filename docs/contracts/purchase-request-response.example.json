@@ -1,0 +1,25 @@
+{
+  "purchaseRequestId": "pr_001",
+  "status": "NORMALIZING",
+  "version": 1,
+  "itemCount": 3,
+  "items": [
+    {
+      "itemId": "pri_001",
+      "clientItemId": "item_001",
+      "normalizationStatus": "PENDING"
+    },
+    {
+      "itemId": "pri_002",
+      "clientItemId": "item_002",
+      "normalizationStatus": "PENDING"
+    },
+    {
+      "itemId": "pri_003",
+      "clientItemId": "item_003",
+      "normalizationStatus": "PENDING"
+    }
+  ],
+  "createdAt": "2026-08-08T10:00:00-03:00"
+}
+

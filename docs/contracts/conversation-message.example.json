@@ -1,0 +1,25 @@
+{
+  "messageId": "msg_001",
+  "conversationId": "conv_001",
+  "rfqId": "rfq_001",
+  "supplierId": "sup_001",
+  "direction": "INBOUND",
+  "channel": "WHATSAPP",
+  "provider": "META_CLOUD_API",
+  "providerMessageId": "wamid.INBOUND_EXAMPLE",
+  "type": "TEXT",
+  "status": "RECEIVED",
+  "sender": {
+    "type": "SUPPLIER_CONTACT",
+    "contactId": "cnt_001",
+    "phone": "+5519988887777"
+  },
+  "content": {
+    "text": "Tenho cimento a 34,50. Entrego segunda; frete 150."
+  },
+  "correlation": {
+    "method": "OPEN_CONVERSATION_BY_CONTACT",
+    "confidence": 1
+  },
+  "receivedAt": "2026-08-08T10:22:00-03:00"
+}

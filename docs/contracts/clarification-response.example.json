@@ -1,0 +1,14 @@
+{
+  "clarificationId": "clr_001",
+  "purchaseRequestId": "pr_001",
+  "answeredBy": "usr_001",
+  "answers": [
+    {
+      "questionId": "clq_001",
+      "itemId": "pri_001",
+      "field": "specifications.strengthClass",
+      "value": "32"
+    }
+  ],
+  "submittedAt": "2026-08-08T10:04:00-03:00"
+}

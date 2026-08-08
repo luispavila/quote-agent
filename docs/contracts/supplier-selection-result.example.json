@@ -1,0 +1,110 @@
+{
+  "selectionRunId": "sel_001",
+  "purchaseRequestId": "pr_001",
+  "selectionPolicyVersion": "supplier-selection-v1",
+  "status": "COMPLETED",
+  "lots": [
+    {
+      "lotId": "lot_001",
+      "itemIds": ["pri_001", "pri_003"],
+      "requiredCategories": ["CEMENT", "MORTAR"],
+      "selectedSuppliers": [
+        {
+          "supplierId": "sup_001",
+          "rank": 1,
+          "score": 0.89,
+          "categoryMatch": {
+            "type": "EXACT",
+            "score": 1
+          },
+          "itemCoverage": 1,
+          "factors": {
+            "coverage": 1,
+            "onTimeDelivery": 0.94,
+            "quoteResponseRate": 0.87,
+            "orderAccuracy": 0.97,
+            "responseSpeed": 0.82,
+            "historicalPriceCompetitiveness": 0.72,
+            "logistics": 0.9
+          },
+          "risk": {
+            "level": "LOW",
+            "reasons": []
+          },
+          "reasons": [
+            "Atende todas as categorias do lote.",
+            "Entrega na região da obra.",
+            "94% das entregas históricas foram pontuais."
+          ]
+        },
+        {
+          "supplierId": "sup_002",
+          "rank": 2,
+          "score": 0.76,
+          "categoryMatch": {
+            "type": "MEMORY_MATCH",
+            "score": 0.96
+          },
+          "itemCoverage": 0.5,
+          "factors": {
+            "coverage": 0.5,
+            "onTimeDelivery": 0.96,
+            "quoteResponseRate": 0.91,
+            "orderAccuracy": 0.95,
+            "responseSpeed": 0.9,
+            "historicalPriceCompetitiveness": 0.85,
+            "logistics": 0.88
+          },
+          "risk": {
+            "level": "LOW",
+            "reasons": []
+          },
+          "reasons": [
+            "Boa competitividade histórica.",
+            "Incluído para aumentar competição no item cimento."
+          ]
+        },
+        {
+          "supplierId": "sup_003",
+          "rank": 3,
+          "score": 0.62,
+          "categoryMatch": {
+            "type": "SEMANTIC",
+            "score": 0.9
+          },
+          "itemCoverage": 1,
+          "factors": {
+            "coverage": 1,
+            "onTimeDelivery": 0.5,
+            "quoteResponseRate": 0.5,
+            "orderAccuracy": 0.5,
+            "responseSpeed": 0.5,
+            "historicalPriceCompetitiveness": 0.5,
+            "logistics": 0.72
+          },
+          "risk": {
+            "level": "MEDIUM",
+            "reasons": ["Fornecedor novo, sem histórico suficiente."]
+          },
+          "reasons": [
+            "Fornecedor verificado e elegível.",
+            "Incluído como exploração controlada."
+          ]
+        }
+      ],
+      "excludedSuppliers": [
+        {
+          "supplierId": "sup_004",
+          "reasonCode": "REGION_NOT_SUPPORTED",
+          "reason": "Não entrega em Campinas."
+        },
+        {
+          "supplierId": "sup_005",
+          "reasonCode": "SUPPLIER_BLOCKED",
+          "reason": "Fornecedor bloqueado pela empresa."
+        }
+      ]
+    }
+  ],
+  "createdAt": "2026-08-08T10:10:00-03:00"
+}

@@ -1,0 +1,55 @@
+{
+  "itemId": "pri_001",
+  "rawDescription": "100 sacos de cimento CP-II de 50 kg",
+  "classification": {
+    "canonicalCategory": "CEMENT",
+    "categoryLabel": "Cimento",
+    "subcategory": "PORTLAND_CEMENT",
+    "confidence": 0.97,
+    "reason": "A descrição contém explicitamente cimento CP-II."
+  },
+  "quantity": {
+    "value": 100,
+    "unit": "BAG",
+    "source": "USER_EXPLICIT",
+    "evidence": "100 sacos",
+    "confidence": 1
+  },
+  "attributes": [
+    {
+      "key": "cementType",
+      "label": "Tipo de cimento",
+      "value": "CP-II",
+      "valueType": "STRING",
+      "unit": null,
+      "source": "USER_EXPLICIT",
+      "evidence": "CP-II",
+      "confidence": 0.99,
+      "commerciallyRelevant": true
+    },
+    {
+      "key": "packageWeight",
+      "label": "Peso da embalagem",
+      "value": 50,
+      "valueType": "NUMBER",
+      "unit": "KG",
+      "source": "USER_EXPLICIT",
+      "evidence": "50 kg",
+      "confidence": 0.99,
+      "commerciallyRelevant": true
+    }
+  ],
+  "missingInformation": [
+    {
+      "key": "strengthClass",
+      "label": "Classe de resistência",
+      "severity": "BLOCKING",
+      "reason": "Classes diferentes podem produzir ofertas tecnicamente não equivalentes.",
+      "suggestedQuestion": "Qual classe de resistência deve ser cotada?",
+      "suggestedOptions": ["25", "32", "40", "ANY"]
+    }
+  ],
+  "contradictions": [],
+  "proposedNormalizedDescription": null,
+  "status": "NEEDS_CLARIFICATION"
+}

@@ -1,0 +1,51 @@
+{
+  "company": {
+    "legalName": "Construtora Aurora Ltda.",
+    "tradeName": "Construtora Aurora",
+    "taxId": {
+      "country": "BR",
+      "type": "CNPJ",
+      "value": "12345678000190"
+    },
+    "procurementSettings": {
+      "currency": "BRL",
+      "defaultPaymentTerms": "NET_28",
+      "taxInvoiceRequired": true,
+      "maximumNegotiationRounds": 2,
+      "allowSplitOrders": true,
+      "allowProductSubstitutions": false,
+      "requireHumanApproval": true
+    }
+  },
+  "adminUser": {
+    "name": "Amanda Santos",
+    "email": "amanda@construtoraaurora.com.br",
+    "phone": "+5519999999999",
+    "roles": ["BUYER", "APPROVER"],
+    "approvalLimit": {
+      "currency": "BRL",
+      "amount": 25000
+    }
+  },
+  "firstConstructionSite": {
+    "name": "Residencial Aurora",
+    "code": "OBRA-AURORA-01",
+    "costCenter": "CC-2026-014",
+    "deliveryAddress": {
+      "street": "Avenida das Amoreiras",
+      "number": "2450",
+      "complement": "Portão B",
+      "city": "Campinas",
+      "state": "SP",
+      "postalCode": "13031100",
+      "country": "BR"
+    },
+    "receivingRules": {
+      "startTime": "08:00",
+      "endTime": "16:00",
+      "appointmentRequired": true,
+      "unloadingIncludedRequired": true
+    }
+  }
+}
+

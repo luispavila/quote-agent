@@ -10,12 +10,12 @@ services:
     envVars:
       - key: APP_ENV
         value: production
-      - key: ANTHROPIC_API_KEY
-        sync: false      # preencher no painel do Render
-      - key: ANTHROPIC_MODEL
-        value: claude-sonnet-5
+      - key: LLM_PROVIDER
+        value: featherless
       - key: LLM_MAX_TOKENS
         value: "1024"
+      - key: DATABASE_URL
+        sync: false
       - key: LANGFUSE_PUBLIC_KEY
         sync: false
       - key: LANGFUSE_SECRET_KEY
@@ -27,33 +27,6 @@ services:
       - key: FEATHERLESS_BASE_URL
         value: https://api.featherless.ai/v1
       - key: FEATHERLESS_MODEL
-        value: Qwen/Qwen2.5-72B-Instruct
-      - key: WA_SERVICE_URL
-        value: https://quote-agent-wa.onrender.com
-      - key: WA_SHARED_TOKEN
-        fromService:
-          type: web
-          name: quote-agent-wa
-          envVarKey: WA_SHARED_TOKEN
-
-  # WhatsApp (Baileys, instância única). Auth state no disco persistente:
-  # pareamento sobrevive a deploys/restarts.
-  - type: web
-    name: quote-agent-wa
-    runtime: docker
-    region: virginia
-    plan: starter
-    rootDir: wa-service
-    dockerfilePath: ./Dockerfile
-    healthCheckPath: /health
-    disk:
-      name: wa-auth
-      mountPath: /data
-      sizeGB: 1
-    envVars:
-      - key: WA_SHARED_TOKEN
-        generateValue: true
-      - key: WEBHOOK_URL
-        value: https://quote-agent.onrender.com/webhooks/wa
-      - key: AUTH_DIR
-        value: /data/auth
+        value: Qwen/Qwen2.5-7B-Instruct
+      - key: FEATHERLESS_TEMPERATURE
+        value: "0"

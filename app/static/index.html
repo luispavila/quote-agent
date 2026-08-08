@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Nexo Compras</title>
+  <link rel="stylesheet" href="/static/styles.css">
+  <link rel="stylesheet" href="/static/blue.css">
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="brand"><span class="brand-mark">N</span><strong>nexo</strong></div>
+      <div class="connection"><i></i> Canal de cotação ativo</div>
+      <div class="trial"><small>AMBIENTE DE DEMONSTRAÇÃO</small><strong>Operação ativa</strong><span>Procurement para construção civil</span></div>
+      <nav>
+        <small>PRINCIPAL</small>
+        <button data-page="dashboard"><span>▦</span> Dashboard</button>
+        <button data-page="new"><span>＋</span> Nova cotação</button>
+        <button data-page="quotes"><span>▤</span> Cotações</button>
+        <button data-page="budgets"><span>▧</span> Orçamentos</button>
+        <small>CADASTROS</small>
+        <button data-page="suppliers"><span>▥</span> Fornecedores</button>
+        <button data-page="ranking"><span>▥</span> Ranking</button>
+        <button data-page="works"><span>♙</span> Obras</button>
+        <button data-page="materials"><span>▱</span> Materiais</button>
+        <small>SISTEMA</small>
+        <button data-page="whatsapp"><span>◯</span> WhatsApp</button>
+        <button data-page="plans"><span>▭</span> Assinatura</button>
+        <button data-page="settings"><span>⚙</span> Configurações</button>
+      </nav>
+      <footer><strong>Construtora Horizonte</strong><span>Marina Costa</span></footer>
+    </aside>
+    <main id="app"><div class="loading">Carregando operação...</div></main>
+  </div>
+  <div id="toast" class="toast hidden"></div>
+  <script src="/static/app.js"></script>
+</body>
+</html>
