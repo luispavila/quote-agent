@@ -26,3 +26,5 @@ services:
         sync: false
       - key: FEATHERLESS_BASE_URL
         value: https://api.featherless.ai/v1
+      - key: FEATHERLESS_MODEL
+        value: meta-llama/Llama-3.3-70B-Instruct

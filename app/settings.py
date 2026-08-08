@@ -22,7 +22,7 @@ class Settings(BaseSettings):
         default="https://api.featherless.ai/v1", validation_alias="FEATHERLESS_BASE_URL"
     )
     featherless_model: str = Field(
-        default="meta-llama/Meta-Llama-3.1-8B-Instruct", validation_alias="FEATHERLESS_MODEL"
+        default="meta-llama/Llama-3.3-70B-Instruct", validation_alias="FEATHERLESS_MODEL"
     )
 
     langfuse_public_key: str | None = Field(default=None, validation_alias="LANGFUSE_PUBLIC_KEY")
@@ -40,6 +40,23 @@ class Settings(BaseSettings):
     @property
     def langfuse_enabled(self) -> bool:
         return bool(self.langfuse_public_key and self.langfuse_secret_key)
+
+    @property
+    def llm_configured(self) -> bool:
+        return self.featherless_api_key is not None or self.anthropic_api_key is not None
+
+    @property
+    def primary_provider(self) -> str | None:
+        # Featherless é o primário (perk do evento); Anthropic entra como fallback
+        if self.featherless_api_key is not None:
+            return "featherless"
+        if self.anthropic_api_key is not None:
+            return "anthropic"
+        return None
+
+    @property
+    def primary_model(self) -> str:
+        return self.featherless_model if self.primary_provider == "featherless" else self.anthropic_model
 
 
 @lru_cache

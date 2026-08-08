@@ -30,8 +30,10 @@ def health() -> dict:
     return {
         "ok": True,
         "env": settings.app_env,
-        "model": settings.anthropic_model,
-        "llm_configured": settings.anthropic_api_key is not None,
+        "primary": settings.primary_provider,
+        "model": settings.primary_model,
+        "fallback": settings.anthropic_api_key is not None and settings.primary_provider == "featherless",
+        "llm_configured": settings.llm_configured,
         "langfuse": settings.langfuse_enabled,
     }
 
@@ -39,8 +41,10 @@ def health() -> dict:
 @app.post("/chat", response_model=ChatResponse)
 def chat(req: ChatRequest) -> ChatResponse:
     settings = get_settings()
-    if settings.anthropic_api_key is None:
-        raise HTTPException(status_code=503, detail="ANTHROPIC_API_KEY não configurada no servidor")
+    if not settings.llm_configured:
+        raise HTTPException(
+            status_code=503, detail="Nenhuma chave de LLM configurada (FEATHERLESS_API_KEY ou ANTHROPIC_API_KEY)"
+        )
 
     from app.graph import build_graph
     from app.tracing import callbacks
@@ -61,4 +65,4 @@ def chat(req: ChatRequest) -> ChatResponse:
     reply = result["messages"][-1].content
     if isinstance(reply, list):  # blocos de conteúdo → concatena só o texto
         reply = "".join(b.get("text", "") for b in reply if isinstance(b, dict))
-    return ChatResponse(reply=reply, session_id=session_id, model=settings.anthropic_model)
+    return ChatResponse(reply=reply, session_id=session_id, model=settings.primary_model)
