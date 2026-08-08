@@ -223,11 +223,11 @@ def wa_webhook(payload: WaWebhook, background: BackgroundTasks, x_wa_token: str 
 
 # ---------- Operação do WhatsApp (proxy autenticado para o wa-service) ----------
 
-def _require_wa(token: str) -> None:
+def _require_wa(token: str = "") -> None:
+    # Operação de WhatsApp é aberta na demo: qualquer visitante conecta/opera.
+    # A api usa a chave interna (WA_SHARED_TOKEN) para falar com o wa-service.
     if not settings.wa_configured:
         raise HTTPException(503, "wa-service não configurado (WA_SERVICE_URL/WA_SHARED_TOKEN)")
-    if not hmac.compare_digest(token, settings.wa_shared_token.get_secret_value()):
-        raise HTTPException(401, "token inválido")
 
 
 def _wa_request(method: str, path: str, json_body: dict | None = None) -> httpx.Response:
@@ -648,10 +648,7 @@ def close_quote(
 
     # Avisa os fornecedores por WhatsApp ANTES de gravar o fechamento — vencedor confirma, demais recebem retorno.
     notified = []
-    wa_ok = settings.wa_configured and bool(token or x_wa_token) and hmac.compare_digest(
-        token or x_wa_token, settings.wa_shared_token.get_secret_value()
-    )
-    if wa_ok:
+    if settings.wa_configured:
         from app.wa import send_text
 
         suppliers = session.execute(
